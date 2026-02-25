@@ -3,234 +3,243 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mewnly — Secure Dark Messenger 🐾</title>
+    <title>Mewnly — Secure Login</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
         :root {
-            --bg-dark: #0f0c13;
-            --card-bg: #1a1625;
-            --accent-pink: #ff75a0;
-            --accent-purple: #9d81ff;
-            --text-main: #e0e0e0;
-            --text-dim: #a0a0a0;
-            --input-bg: #252033;
+            --bg-main: #313338;
+            --bg-card: #2b2d31;
+            --bg-input: #1e1f22;
+            --blurple: #5865f2;
+            --blurple-hover: #4752c4;
+            --text-main: #f2f3f5;
+            --text-muted: #b5bac1;
+            --danger: #fa777a;
         }
 
         body {
-            font-family: 'Segoe UI', sans-serif;
-            background: radial-gradient(circle at top right, #1e1b2e, var(--bg-dark));
-            height: 100vh;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            font-family: 'gg sans', 'Noto Sans', sans-serif;
             display: flex;
             align-items: center;
             justify-content: center;
+            height: 100vh;
             margin: 0;
-            color: var(--text-main);
             overflow: hidden;
         }
 
-        .auth-container {
-            background: var(--card-bg);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            padding: 2.5rem;
-            border-radius: 28px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        .auth-card {
+            background: var(--bg-card);
+            padding: 32px;
+            border-radius: 8px;
             width: 100%;
-            max-width: 380px;
-            text-align: center;
-            animation: fadeIn 0.5s ease-out;
+            max-width: 420px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
         }
 
-        h1 { color: var(--accent-pink); margin-bottom: 1.5rem; font-size: 2.2rem; text-shadow: 0 0 15px rgba(255, 117, 160, 0.3); }
+        .header { text-align: center; margin-bottom: 20px; }
+        h2 { margin: 0; font-size: 24px; font-weight: 600; }
+        .subtitle { color: var(--text-muted); font-size: 16px; margin-top: 8px; }
 
-        .input-group { margin-bottom: 1.2rem; text-align: left; }
-        label { display: block; margin-bottom: 0.6rem; color: var(--text-dim); font-size: 0.85rem; padding-left: 5px; }
+        .input-group { margin-bottom: 20px; }
+        label {
+            display: block;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-size: 12px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
 
         input {
             width: 100%;
-            padding: 14px;
-            background: var(--input-bg);
-            border: 2px solid transparent;
-            border-radius: 16px;
+            padding: 10px;
+            background: var(--bg-input);
+            border: none;
+            border-radius: 3px;
+            color: var(--text-main);
+            font-size: 16px;
             box-sizing: border-box;
-            color: white;
-            transition: all 0.3s ease;
-            outline: none;
+            transition: border 0.2s;
         }
 
-        input:focus { border-color: var(--accent-purple); background: #2d273d; box-shadow: 0 0 10px rgba(157, 129, 255, 0.2); }
+        input:focus { outline: 1px solid var(--blurple); }
 
         button {
             width: 100%;
-            padding: 15px;
-            background: linear-gradient(45deg, var(--accent-pink), var(--accent-purple));
-            border: none;
-            border-radius: 16px;
+            padding: 12px;
+            background-color: var(--blurple);
             color: white;
-            font-weight: bold;
-            font-size: 1rem;
+            border: none;
+            border-radius: 3px;
+            font-size: 16px;
+            font-weight: 500;
             cursor: pointer;
-            transition: all 0.3s ease;
-            margin-top: 1.5rem;
+            transition: background 0.2s;
         }
 
-        button:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(255, 117, 160, 0.4); }
-        button:disabled { opacity: 0.5; cursor: wait; }
+        button:hover { background-color: var(--blurple-hover); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        .toggle-link { margin-top: 1.5rem; display: block; color: var(--text-dim); text-decoration: none; font-size: 0.85rem; }
-        .toggle-link:hover { color: var(--accent-pink); }
+        .link { color: #00a8fc; text-decoration: none; font-size: 14px; cursor: pointer; }
+        .link:hover { text-decoration: underline; }
 
-        .seed-phrase {
+        .seed-box {
             display: none;
-            background: #12101a;
-            padding: 1.2rem;
-            border-radius: 16px;
-            border: 1px dashed var(--accent-purple);
-            margin-top: 1.2rem;
-            word-break: break-all;
-            font-family: 'Courier New', monospace;
-            color: var(--accent-purple);
-            font-size: 0.9rem;
+            background: var(--bg-input);
+            padding: 12px;
+            border: 1px dashed var(--blurple);
+            border-radius: 4px;
+            color: var(--text-main);
+            font-family: monospace;
+            font-size: 13px;
+            margin-bottom: 15px;
             text-align: left;
         }
 
         .hidden { display: none; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .footer-text { margin-top: 12px; font-size: 14px; color: var(--text-muted); }
     </style>
 </head>
 <body>
 
-<div class="auth-container">
-    <h1 id="form-title">Mewnly 🐾</h1>
-    
-    <div id="login-form">
-        <div class="input-group">
-            <label>Username</label>
-            <input type="text" id="login-username" placeholder="Enter nickname">
-        </div>
-        <div class="input-group">
-            <label>Password</label>
-            <input type="password" id="login-password" placeholder="••••••••">
-        </div>
-        <button id="login-btn" onclick="handleAuth('login')">Login</button>
-        <a href="#" class="toggle-link" onclick="toggleForms()">New here? Create account</a>
+<div class="auth-card">
+    <div class="header" id="header-area">
+        <h2 id="main-title">Welcome back!</h2>
+        <div class="subtitle" id="main-subtitle">We're so excited to see you again!</div>
     </div>
 
-    <div id="register-form" class="hidden">
+    <div id="auth-form">
         <div class="input-group">
-            <label>Choose Username</label>
-            <input type="text" id="reg-username" placeholder="MewUser">
-        </div>
-        <div class="input-group">
-            <label>Password</label>
-            <input type="password" id="reg-password" placeholder="••••••••">
-        </div>
-        <div class="input-group">
-            <label>Confirm Password</label>
-            <input type="password" id="reg-password-confirm" placeholder="••••••••">
-        </div>
-        
-        <div id="seed-display" class="seed-phrase">
-            <strong style="color: var(--text-main);">Backup Seed Phrase:</strong><br><br>
-            <span id="generated-seed"></span>
-            <p style="font-size: 0.75rem; color: var(--accent-pink); margin-top: 10px;">
-                ⚠️ SAVE THIS! You cannot recover your account without it.
-            </p>
+            <label>Username</label>
+            <input type="text" id="username" autocomplete="off">
         </div>
 
-        <button id="reg-btn" onclick="handleAuth('register')">Sign Up</button>
-        <a href="#" class="toggle-link" onclick="toggleForms()">Already have a profile?</a>
+        <div class="input-group">
+            <label>Password</label>
+            <input type="password" id="password">
+        </div>
+
+        <div class="input-group hidden" id="confirm-group">
+            <label>Confirm Password</label>
+            <input type="password" id="confirm-password">
+        </div>
+
+        <div id="seed-display" class="seed-box"></div>
+
+        <button id="submit-btn" onclick="processAuth()">Log In</button>
+
+        <div class="footer-text">
+            <span id="toggle-text">Need an account?</span>
+            <span class="link" onclick="toggleMode()" id="toggle-link">Register</span>
+        </div>
     </div>
 </div>
 
 <script>
     // --- CONFIGURATION ---
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwkCZ9TUvCsU8KM9UIXvW1-2Fsc4Ihs3iOiFMRGa-6WAehN3HcU9ePvp0lJzrxmLz6t/exec'; 
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwEl9AGJFkwRRtLwzEkDkOGoqETshRmWr6OAF645Nbf2xRGER8_jBCqF4Z6ayi-Eok6/exec';
+    let isLoginMode = true;
 
-    function toggleForms() {
-        document.getElementById('login-form').classList.toggle('hidden');
-        document.getElementById('register-form').classList.toggle('hidden');
-        const isReg = document.getElementById('login-form').classList.contains('hidden');
-        document.getElementById('form-title').innerText = isReg ? 'Join Mewnly ✨' : 'Mewnly 🐾';
+    // 1. ПРОВЕРКА АВТОВХОДА
+    window.onload = () => {
+        if (localStorage.getItem('mewnly_user')) {
+            window.location.href = 'app/dash.html';
+        }
+    };
+
+    // 2. ПЕРЕКЛЮЧЕНИЕ МЕЖДУ ВХОДОМ И РЕГИСТРАЦИЕЙ
+    function toggleMode() {
+        isLoginMode = !isLoginMode;
+        document.getElementById('confirm-group').classList.toggle('hidden');
+        document.getElementById('main-title').innerText = isLoginMode ? 'Welcome back!' : 'Create an account';
+        document.getElementById('main-subtitle').style.display = isLoginMode ? 'block' : 'none';
+        document.getElementById('submit-btn').innerText = isLoginMode ? 'Log In' : 'Continue';
+        document.getElementById('toggle-text').innerText = isLoginMode ? 'Need an account?' : 'Already have an account?';
+        document.getElementById('toggle-link').innerText = isLoginMode ? 'Register' : 'Log In';
+        document.getElementById('seed-display').style.display = 'none';
     }
 
-    // Main Auth Logic
-    async function handleAuth(type) {
-        const btn = type === 'register' ? document.getElementById('reg-btn') : document.getElementById('login-btn');
-        
-        if (type === 'register') {
-            const user = document.getElementById('reg-username').value.trim();
-            const pass = document.getElementById('reg-password').value;
-            const confirm = document.getElementById('reg-password-confirm').value;
+    // 3. ОСНОВНАЯ ЛОГИКА
+    async function processAuth() {
+        const user = document.getElementById('username').value.trim();
+        const pass = document.getElementById('password').value;
+        const btn = document.getElementById('submit-btn');
+
+        if (!user || !pass) return alert("Please fill in all fields.");
+
+        // Логика регистрации (подтверждение пароля и сид-фраза)
+        if (!isLoginMode) {
+            const confirm = document.getElementById('confirm-password').value;
+            if (pass !== confirm) return alert("Passwords do not match.");
+
             const seedBox = document.getElementById('seed-display');
-
-            if (!user || !pass) return alert("Fill all fields!");
-            if (pass !== confirm) return alert("Passwords mismatch!");
-
-            // Step 1: Generate Seed if not visible
             if (seedBox.style.display !== 'block') {
-                const words = ["neko", "sparkle", "cloud", "pixel", "dream", "soft", "moon", "star", "cyber", "wave", "pure", "light", "cute", "magic", "paws"];
-                let seed = [];
-                for(let i=0; i<12; i++) seed.push(words[Math.floor(Math.random() * words.length)]);
-                document.getElementById('generated-seed').innerText = seed.join(" ");
+                const words = ["echo", "neon", "pixel", "void", "cyber", "pulse", "drift", "sonic", "alpha", "omega", "flux", "starlight"];
+                const seed = Array.from({length: 12}, () => words[Math.floor(Math.random()*words.length)]).join(" ");
+                seedBox.innerText = "BACKUP SEED: " + seed;
                 seedBox.style.display = 'block';
-                btn.innerText = "I saved it, Register!";
+                btn.innerText = "I've saved it. Finish Registration";
                 return;
             }
-
-            // Step 2: Send Registration
-            const passHash = CryptoJS.SHA256(pass).toString();
-            const seedPhrase = document.getElementById('generated-seed').innerText;
-            
-            await apiRequest({
-                action: 'register',
-                username: user,
-                password: passHash,
-                seed: seedPhrase
-            }, btn);
-
-        } else {
-            // Login Logic
-            const user = document.getElementById('login-username').value.trim();
-            const pass = document.getElementById('login-password').value;
-            if (!user || !pass) return alert("Enter credentials!");
-
-            const passHash = CryptoJS.SHA256(pass).toString();
-            await apiRequest({
-                action: 'login',
-                username: user,
-                password: passHash
-            }, btn);
         }
-    }
 
-    async function apiRequest(payload, button) {
-        button.disabled = true;
-        const oldText = button.innerText;
-        button.innerText = "Syncing...";
+        // Начинаем процесс отправки
+        btn.innerText = "Verifying...";
+        btn.disabled = true;
+
+        // Получаем IP
+        let ip = "0.0.0.0";
+        try {
+            const res = await fetch('https://api.ipify.org?format=json');
+            ip = (await res.json()).ip;
+        } catch(e) {}
+
+        const passHash = CryptoJS.SHA256(pass).toString();
+        const payload = {
+            action: isLoginMode ? 'login' : 'register',
+            username: user,
+            password: passHash,
+            seed: document.getElementById('seed-display').innerText || ""
+        };
 
         try {
-            // We use no-cors because Apps Script doesn't return easy-to-read headers
-            await fetch(SCRIPT_URL, {
+            // Отправляем запрос в Google Таблицы
+            const response = await fetch(`${SCRIPT_URL}?ip=${ip}`, {
                 method: 'POST',
-                mode: 'no-cors',
-                cache: 'no-cache',
                 body: JSON.stringify(payload)
             });
 
-            // If we are here, fetch "fired". In no-cors we assume success.
-            localStorage.setItem('mewnly_user', payload.username);
-            
-            setTimeout(() => {
+            const result = await response.text();
+
+            if (result === "SUCCESS_LOGIN" || result === "SUCCESS_REG") {
+                // ПУСКАЕМ ТОЛЬКО ПРИ ПОДТВЕРЖДЕНИИ ОТ ТАБЛИЦЫ
+                localStorage.setItem('mewnly_user', user);
                 window.location.href = 'app/dash.html';
-            }, 1000);
+            } else if (result === "USER_EXISTS") {
+                alert("This username is already taken!");
+                resetBtn(btn);
+            } else if (result === "INVALID_PASSWORD" || result === "USER_NOT_FOUND") {
+                alert("Invalid username or password!");
+                resetBtn(btn);
+            } else {
+                alert("Server error: " + result);
+                resetBtn(btn);
+            }
 
         } catch (err) {
             console.error(err);
-            alert("API Error. Check console.");
-            button.disabled = false;
-            button.innerText = oldText;
+            alert("Connection error or CORS blocked. Make sure your Google Script is deployed correctly.");
+            resetBtn(btn);
         }
     }
+
+    function resetBtn(btn) {
+        btn.disabled = false;
+        btn.innerText = isLoginMode ? "Log In" : "Continue";
+    }
 </script>
+
 </body>
 </html>

@@ -3,24 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mewnly — Secure Login</title>
+    <title>Mewnly — Stealth Access</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
         :root {
-            --bg-main: #313338;
-            --bg-card: #2b2d31;
-            --bg-input: #1e1f22;
-            --blurple: #5865f2;
-            --blurple-hover: #4752c4;
-            --text-main: #f2f3f5;
-            --text-muted: #b5bac1;
-            --danger: #fa777a;
+            --bg-deep: #141414;
+            --accent-purple: #7F49B4;
+            --text-light: #CFCFCF;
+            --bg-card: #1c1c1c;
+            --input-bg: #0a0a0a;
+            --white: #ffffff;
         }
 
         body {
-            background-color: var(--bg-main);
-            color: var(--text-main);
-            font-family: 'gg sans', 'Noto Sans', sans-serif;
+            background-color: var(--bg-deep);
+            color: var(--text-light);
+            font-family: 'Inter', -apple-system, sans-serif;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -31,165 +29,187 @@
 
         .auth-card {
             background: var(--bg-card);
-            padding: 32px;
-            border-radius: 8px;
+            padding: 40px;
+            border-radius: 24px;
             width: 100%;
-            max-width: 420px;
-            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            max-width: 380px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.7);
+            border: 1px solid rgba(127, 73, 180, 0.1);
+            text-align: center;
         }
 
-        .header { text-align: center; margin-bottom: 20px; }
-        h2 { margin: 0; font-size: 24px; font-weight: 600; }
-        .subtitle { color: var(--text-muted); font-size: 16px; margin-top: 8px; }
+        h2 { margin: 0 0 10px 0; color: var(--white); font-size: 26px; }
+        .subtitle { color: var(--text-light); font-size: 14px; margin-bottom: 30px; opacity: 0.7; }
 
-        .input-group { margin-bottom: 20px; }
+        .input-group { text-align: left; margin-bottom: 18px; position: relative; }
         label {
             display: block;
-            color: var(--text-muted);
+            color: var(--accent-purple);
             text-transform: uppercase;
-            font-size: 12px;
-            font-weight: 700;
-            margin-bottom: 8px;
+            font-size: 11px;
+            font-weight: 800;
+            margin-bottom: 6px;
+            letter-spacing: 1px;
         }
 
         input {
             width: 100%;
-            padding: 10px;
-            background: var(--bg-input);
-            border: none;
-            border-radius: 3px;
-            color: var(--text-main);
-            font-size: 16px;
+            padding: 14px 45px 14px 14px; /* Отступ справа для иконки */
+            background: var(--input-bg);
+            border: 1px solid rgba(207, 207, 207, 0.1);
+            border-radius: 10px;
+            color: var(--white);
+            font-size: 15px;
             box-sizing: border-box;
-            transition: border 0.2s;
+            transition: 0.3s;
         }
 
-        input:focus { outline: 1px solid var(--blurple); }
+        input:focus { outline: none; border-color: var(--accent-purple); }
+
+        /* Иконка глаза/замка */
+        .toggle-password {
+            position: absolute;
+            right: 14px;
+            bottom: 11px;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            opacity: 0.5;
+            transition: 0.3s;
+            filter: invert(90%) sepia(5%) saturate(20%) hue-rotate(180deg); /* Делаем иконку светлой под CFCFCF */
+        }
+
+        .toggle-password:hover { opacity: 1; filter: none; }
+        .toggle-password.active { 
+            opacity: 1; 
+            filter: invert(34%) sepia(85%) saturate(945%) hue-rotate(235deg) brightness(85%) contrast(85%); /* Фиолетовый фильтр */
+        }
 
         button {
             width: 100%;
-            padding: 12px;
-            background-color: var(--blurple);
-            color: white;
+            padding: 14px;
+            background-color: var(--accent-purple);
+            color: var(--white);
             border: none;
-            border-radius: 3px;
+            border-radius: 10px;
             font-size: 16px;
-            font-weight: 500;
+            font-weight: 600;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: 0.3s;
+            margin-top: 10px;
         }
 
-        button:hover { background-color: var(--blurple-hover); }
+        button:hover { background-color: #8f5dc4; transform: translateY(-1px); }
         button:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        .link { color: #00a8fc; text-decoration: none; font-size: 14px; cursor: pointer; }
-        .link:hover { text-decoration: underline; }
-
+        .link { color: var(--accent-purple); text-decoration: none; font-weight: 600; cursor: pointer; }
         .seed-box {
             display: none;
-            background: var(--bg-input);
-            padding: 12px;
-            border: 1px dashed var(--blurple);
-            border-radius: 4px;
-            color: var(--text-main);
+            background: #000;
+            padding: 14px;
+            border: 1px dashed var(--accent-purple);
+            border-radius: 8px;
+            color: var(--accent-purple);
             font-family: monospace;
-            font-size: 13px;
-            margin-bottom: 15px;
+            font-size: 12px;
+            margin-bottom: 20px;
             text-align: left;
         }
 
         .hidden { display: none; }
-        .footer-text { margin-top: 12px; font-size: 14px; color: var(--text-muted); }
     </style>
 </head>
 <body>
 
 <div class="auth-card">
-    <div class="header" id="header-area">
-        <h2 id="main-title">Welcome back!</h2>
-        <div class="subtitle" id="main-subtitle">We're so excited to see you again!</div>
+    <h2 id="title">Mewnly</h2>
+    <div class="subtitle" id="subtitle">Secure communication portal</div>
+
+    <div class="input-group">
+        <label>Username</label>
+        <input type="text" id="username" spellcheck="false">
     </div>
 
-    <div id="auth-form">
-        <div class="input-group">
-            <label>Username</label>
-            <input type="text" id="username" autocomplete="off">
-        </div>
+    <div class="input-group">
+        <label>Password</label>
+        <input type="password" id="password">
+        <img src="https://img.icons8.com/outline/64/7F49B4/padlock-outline.png" 
+             class="toggle-password" 
+             onclick="togglePasswordVisibility('password', this)" 
+             title="Show/Hide Password">
+    </div>
 
-        <div class="input-group">
-            <label>Password</label>
-            <input type="password" id="password">
-        </div>
+    <div class="input-group hidden" id="confirm-group">
+        <label>Verify Password</label>
+        <input type="password" id="confirm-password">
+        <img src="https://img.icons8.com/outline/64/7F49B4/padlock-outline.png" 
+             class="toggle-password" 
+             onclick="togglePasswordVisibility('confirm-password', this)">
+    </div>
 
-        <div class="input-group hidden" id="confirm-group">
-            <label>Confirm Password</label>
-            <input type="password" id="confirm-password">
-        </div>
+    <div id="seed-display" class="seed-box"></div>
 
-        <div id="seed-display" class="seed-box"></div>
+    <button id="main-btn" onclick="handleAction()">Log In</button>
 
-        <button id="submit-btn" onclick="processAuth()">Log In</button>
-
-        <div class="footer-text">
-            <span id="toggle-text">Need an account?</span>
-            <span class="link" onclick="toggleMode()" id="toggle-link">Register</span>
-        </div>
+    <div style="margin-top: 25px; font-size: 13px;">
+        <span id="switch-text">New here?</span> 
+        <span class="link" onclick="toggleMode()" id="switch-link">Create Account</span>
     </div>
 </div>
 
 <script>
-    // --- CONFIGURATION ---
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwEl9AGJFkwRRtLwzEkDkOGoqETshRmWr6OAF645Nbf2xRGER8_jBCqF4Z6ayi-Eok6/exec';
-    let isLoginMode = true;
+    const SCRIPT_URL = 'YOUR_GOOGLE_SCRIPT_URL_HERE';
+    let isLogin = true;
 
-    // 1. ПРОВЕРКА АВТОВХОДА
-    window.onload = () => {
-        if (localStorage.getItem('mewnly_user')) {
-            window.location.href = 'app/dash.html';
+    // Функция переключения видимости пароля
+    function togglePasswordVisibility(inputId, imgEl) {
+        const input = document.getElementById(inputId);
+        if (input.type === "password") {
+            input.type = "text";
+            imgEl.classList.add('active');
+        } else {
+            input.type = "password";
+            imgEl.classList.remove('active');
         }
+    }
+
+    window.onload = () => {
+        if (localStorage.getItem('mewnly_user')) window.location.href = 'app/dash.html';
     };
 
-    // 2. ПЕРЕКЛЮЧЕНИЕ МЕЖДУ ВХОДОМ И РЕГИСТРАЦИЕЙ
     function toggleMode() {
-        isLoginMode = !isLoginMode;
+        isLogin = !isLogin;
         document.getElementById('confirm-group').classList.toggle('hidden');
-        document.getElementById('main-title').innerText = isLoginMode ? 'Welcome back!' : 'Create an account';
-        document.getElementById('main-subtitle').style.display = isLoginMode ? 'block' : 'none';
-        document.getElementById('submit-btn').innerText = isLoginMode ? 'Log In' : 'Continue';
-        document.getElementById('toggle-text').innerText = isLoginMode ? 'Need an account?' : 'Already have an account?';
-        document.getElementById('toggle-link').innerText = isLoginMode ? 'Register' : 'Log In';
+        document.getElementById('title').innerText = isLogin ? 'Mewnly' : 'Join Mewnly';
+        document.getElementById('main-btn').innerText = isLogin ? 'Log In' : 'Continue';
+        document.getElementById('switch-link').innerText = isLogin ? 'Create Account' : 'Log In';
         document.getElementById('seed-display').style.display = 'none';
     }
 
-    // 3. ОСНОВНАЯ ЛОГИКА
-    async function processAuth() {
+    async function handleAction() {
         const user = document.getElementById('username').value.trim();
         const pass = document.getElementById('password').value;
-        const btn = document.getElementById('submit-btn');
+        const btn = document.getElementById('main-btn');
 
-        if (!user || !pass) return alert("Please fill in all fields.");
+        if (!user || !pass) return alert("Fill all fields.");
 
-        // Логика регистрации (подтверждение пароля и сид-фраза)
-        if (!isLoginMode) {
+        if (!isLogin) {
             const confirm = document.getElementById('confirm-password').value;
-            if (pass !== confirm) return alert("Passwords do not match.");
-
+            if (pass !== confirm) return alert("Passwords mismatch.");
             const seedBox = document.getElementById('seed-display');
             if (seedBox.style.display !== 'block') {
-                const words = ["echo", "neon", "pixel", "void", "cyber", "pulse", "drift", "sonic", "alpha", "omega", "flux", "starlight"];
+                const words = ["nebula", "cipher", "vertex", "quartz", "shadow", "logic", "prism", "orbit", "vector", "static", "obsidian", "matrix"];
                 const seed = Array.from({length: 12}, () => words[Math.floor(Math.random()*words.length)]).join(" ");
                 seedBox.innerText = "BACKUP SEED: " + seed;
                 seedBox.style.display = 'block';
-                btn.innerText = "I've saved it. Finish Registration";
+                btn.innerText = "I've saved it. Create Account";
                 return;
             }
         }
 
-        // Начинаем процесс отправки
-        btn.innerText = "Verifying...";
         btn.disabled = true;
+        btn.innerText = "Syncing...";
 
-        // Получаем IP
         let ip = "0.0.0.0";
         try {
             const res = await fetch('https://api.ipify.org?format=json');
@@ -197,47 +217,32 @@
         } catch(e) {}
 
         const passHash = CryptoJS.SHA256(pass).toString();
-        const payload = {
-            action: isLoginMode ? 'login' : 'register',
-            username: user,
-            password: passHash,
-            seed: document.getElementById('seed-display').innerText || ""
-        };
-
+        
         try {
-            // Отправляем запрос в Google Таблицы
             const response = await fetch(`${SCRIPT_URL}?ip=${ip}`, {
                 method: 'POST',
-                body: JSON.stringify(payload)
+                body: JSON.stringify({
+                    action: isLogin ? 'login' : 'register',
+                    username: user,
+                    password: passHash,
+                    seed: document.getElementById('seed-display').innerText || ""
+                })
             });
 
             const result = await response.text();
 
             if (result === "SUCCESS_LOGIN" || result === "SUCCESS_REG") {
-                // ПУСКАЕМ ТОЛЬКО ПРИ ПОДТВЕРЖДЕНИИ ОТ ТАБЛИЦЫ
                 localStorage.setItem('mewnly_user', user);
                 window.location.href = 'app/dash.html';
-            } else if (result === "USER_EXISTS") {
-                alert("This username is already taken!");
-                resetBtn(btn);
-            } else if (result === "INVALID_PASSWORD" || result === "USER_NOT_FOUND") {
-                alert("Invalid username or password!");
-                resetBtn(btn);
             } else {
-                alert("Server error: " + result);
-                resetBtn(btn);
+                alert("Server: " + result);
+                btn.disabled = false;
+                btn.innerText = isLogin ? "Log In" : "Continue";
             }
-
         } catch (err) {
-            console.error(err);
-            alert("Connection error or CORS blocked. Make sure your Google Script is deployed correctly.");
-            resetBtn(btn);
+            alert("Error. Check your Script URL.");
+            btn.disabled = false;
         }
-    }
-
-    function resetBtn(btn) {
-        btn.disabled = false;
-        btn.innerText = isLoginMode ? "Log In" : "Continue";
     }
 </script>
 

@@ -158,7 +158,7 @@
 </div>
 
 <script>
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwWyAN_VxPSOGM5QGEsxZbNPp91PA3EBqZ7prNTc8A/dev';
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbweU4Y37HpasEMyfSD-kEnmQI0UiObmFgVe9FPXlejgB2r7ZJUfyoeygWs99SZQ8M1O/exec';
     let isLogin = true;
 
     // Функция переключения видимости пароля
@@ -198,7 +198,18 @@
             if (pass !== confirm) return alert("Passwords mismatch.");
             const seedBox = document.getElementById('seed-display');
             if (seedBox.style.display !== 'block') {
-                const words = ["nebula", "cipher", "vertex", "quartz", "shadow", "logic", "prism", "orbit", "vector", "static", "obsidian", "matrix"];
+                const extraWords = [
+  "alpha", "arctic", "atlas", "aurora", "axis", "azure", "beacon", "boreal", "bullet", "canyon",
+  "carbon", "cobalt", "comet", "copper", "cosmic", "crater", "crypto", "crystal", "cyber", "delta",
+  "digit", "dragon", "drift", "eagle", "echo", "eclipse", "ember", "engine", "energy", "enigma",
+  "ethnic", "falcon", "fiber", "flame", "flare", "flash", "flight", "fossil", "frozen", "fusion",
+  "galaxy", "gamma", "ghost", "glacier", "glass", "gravity", "grid", "habit", "helix", "hollow",
+  "horizon", "hybrid", "hyper", "icon", "igloo", "impact", "indigo", "infinity", "infra", "ivory",
+  "jet", "jewel", "jester", "jump", "jungle", "karma", "keen", "kinetic", "lava", "legend",
+  "lens", "leopard", "level", "light", "lunar", "macro", "magic", "magnet", "magma", "mantle",
+  "marble", "marine", "mars", "master", "medal", "melody", "metal", "meteor", "micro", "mind",
+  "mirror", "mist", "mobile", "modern", "module", "moment", "moon", "motive", "mountain", "mystic"
+];
                 const seed = Array.from({length: 12}, () => words[Math.floor(Math.random()*words.length)]).join(" ");
                 seedBox.innerText = "BACKUP SEED: " + seed;
                 seedBox.style.display = 'block';
@@ -248,4 +259,5 @@
 
 </body>
 </html>
+
 

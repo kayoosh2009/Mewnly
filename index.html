@@ -187,36 +187,46 @@
     }
 
     async function handleAction() {
-        const user = document.getElementById('username').value.trim();
-        const pass = document.getElementById('password').value;
-        const btn = document.getElementById('main-btn');
+    const user = document.getElementById('username').value.trim();
+    const pass = document.getElementById('password').value;
+    const btn = document.getElementById('main-btn');
 
-        if (!user || !pass) return alert("Fill all fields.");
+    if (!user || !pass) return alert("Заполните все поля.");
+    
+    // Проверка на длину ника (твое новое ограничение)
+    if (user.length > 50) return alert("Никнейм не может быть длиннее 50 символов.");
 
-        if (!isLogin) {
-            const confirm = document.getElementById('confirm-password').value;
-            if (pass !== confirm) return alert("Passwords mismatch.");
-            const seedBox = document.getElementById('seed-display');
-            if (seedBox.style.display !== 'block') {
-                const extraWords = [
-  "alpha", "arctic", "atlas", "aurora", "axis", "azure", "beacon", "boreal", "bullet", "canyon",
-  "carbon", "cobalt", "comet", "copper", "cosmic", "crater", "crypto", "crystal", "cyber", "delta",
-  "digit", "dragon", "drift", "eagle", "echo", "eclipse", "ember", "engine", "energy", "enigma",
-  "ethnic", "falcon", "fiber", "flame", "flare", "flash", "flight", "fossil", "frozen", "fusion",
-  "galaxy", "gamma", "ghost", "glacier", "glass", "gravity", "grid", "habit", "helix", "hollow",
-  "horizon", "hybrid", "hyper", "icon", "igloo", "impact", "indigo", "infinity", "infra", "ivory",
-  "jet", "jewel", "jester", "jump", "jungle", "karma", "keen", "kinetic", "lava", "legend",
-  "lens", "leopard", "level", "light", "lunar", "macro", "magic", "magnet", "magma", "mantle",
-  "marble", "marine", "mars", "master", "medal", "melody", "metal", "meteor", "micro", "mind",
-  "mirror", "mist", "mobile", "modern", "module", "moment", "moon", "motive", "mountain", "mystic"
-];
-                const seed = Array.from({length: 12}, () => words[Math.floor(Math.random()*words.length)]).join(" ");
-                seedBox.innerText = "BACKUP SEED: " + seed;
-                seedBox.style.display = 'block';
-                btn.innerText = "I've saved it. Create Account";
-                return;
-            }
+    if (!isLogin) {
+        const confirm = document.getElementById('confirm-password').value;
+        if (pass !== confirm) return alert("Пароли не совпадают.");
+        
+        const seedBox = document.getElementById('seed-display');
+        
+        // Проверяем, показана ли уже сид-фраза
+        if (seedBox.style.display !== 'block') {
+            // Называем массив просто 'words'
+            const words = [
+                "alpha", "arctic", "atlas", "aurora", "axis", "azure", "beacon", "boreal", "bullet", "canyon",
+                "carbon", "cobalt", "comet", "copper", "cosmic", "crater", "crypto", "crystal", "cyber", "delta",
+                "digit", "dragon", "drift", "eagle", "echo", "eclipse", "ember", "engine", "energy", "enigma",
+                "ethnic", "falcon", "fiber", "flame", "flare", "flash", "flight", "fossil", "frozen", "fusion",
+                "galaxy", "gamma", "ghost", "glacier", "glass", "gravity", "grid", "habit", "helix", "hollow",
+                "horizon", "hybrid", "hyper", "icon", "igloo", "impact", "indigo", "infinity", "infra", "ivory",
+                "jet", "jewel", "jester", "jump", "jungle", "karma", "keen", "kinetic", "lava", "legend",
+                "lens", "leopard", "level", "light", "lunar", "macro", "magic", "magnet", "magma", "mantle",
+                "marble", "marine", "mars", "master", "medal", "melody", "metal", "meteor", "micro", "mind",
+                "mirror", "mist", "mobile", "modern", "module", "moment", "moon", "motive", "mountain", "mystic"
+            ];
+
+            // Теперь 'words' определен и ошибки не будет
+            const seed = Array.from({length: 12}, () => words[Math.floor(Math.random() * words.length)]).join(" ");
+            
+            seedBox.innerText = "ВАША СИД-ФРАЗА (СОХРАНИТЕ!): \n\n" + seed;
+            seedBox.style.display = 'block';
+            btn.innerText = "Я сохранил. Создать аккаунт";
+            return;
         }
+    }
 
         btn.disabled = true;
         btn.innerText = "Syncing...";
@@ -259,5 +269,6 @@
 
 </body>
 </html>
+
 
 

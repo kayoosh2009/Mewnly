@@ -5,226 +5,117 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Mewnly — Dashboard</title>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getAuth, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyB3YsqmPng3BdsgbZXs-Ok1c5Z4e1HZhkY",
+            authDomain: "mewnly.firebaseapp.com",
+            projectId: "mewnly",
+            storageBucket: "mewnly.firebasestorage.app",
+            messagingSenderId: "854522459869",
+            appId: "1:854522459869:web:edc0df5aad55ca1f4e8d34"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        window.loadFirebaseProfile = async (username) => {
+            const q = query(collection(db, "users"), where("username", "==", username.toLowerCase()));
+            const snap = await getDocs(q);
+            return !snap.empty ? snap.docs[0].data() : null;
+        };
+        window.firebaseLogout = () => signOut(auth);
+    </script>
     
     <style>
         :root {
-            --bg-deep: #141414;       /* Основной черный */
-            --bg-card: #1c1c1c;       /* Карточки и панели */
-            --accent: #7F49B4;        /* Твой фиолетовый */
-            --text-gray: #CFCFCF;     /* Твой серый текст */
+            --bg-deep: #0f0f0f;
+            --bg-card: #161616;
+            --accent: #7F49B4;
+            --text-gray: #a0a0a0;
             --white: #ffffff;
-            --border: rgba(127, 73, 180, 0.2);
+            --border: rgba(127, 73, 180, 0.15);
         }
 
-        * {
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-        }
+        * { box-sizing: border-box; outline: none; }
+        body, html { margin: 0; padding: 0; height: 100%; background: var(--bg-deep); color: var(--text-gray); font-family: 'Inter', sans-serif; overflow: hidden; }
 
-        body, html {
-            margin: 0;
-            padding: 0;
-            height: 100%;
-            background: var(--bg-deep);
-            color: var(--text-gray);
-            font-family: 'Inter', sans-serif;
-            overflow: hidden; /* Запрещаем общий скролл страницы */
-        }
+        .app-container { display: flex; width: 100%; height: 100vh; }
 
-        /* --- LAYOUT --- */
-        .app-container {
-            display: flex;
-            width: 100%;
-            height: 100vh;
-            position: relative;
-        }
-
-        /* --- DRAWER (ВЫЕЗДНОЕ МЕНЮ) --- */
+        /* --- DRAWER (МЕНЮ) --- */
         .drawer {
-            position: fixed;
-            left: -320px;
-            top: 0;
-            width: 300px;
-            height: 100%;
-            background: #181818;
-            border-right: 1px solid var(--accent);
+            position: fixed; left: -310px; top: 0; width: 300px; height: 100%;
+            background: #111; border-right: 1px solid var(--border);
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            z-index: 2000;
-            display: flex;
-            flex-direction: column;
+            z-index: 2000; display: flex; flex-direction: column;
         }
+        .drawer.open { transform: translateX(310px); box-shadow: 15px 0 40px rgba(0,0,0,0.9); }
 
-        .drawer.open {
-            transform: translateX(320px);
-            box-shadow: 20px 0 50px rgba(0,0,0,0.8);
-        }
-
-        .mini-profile {
-            padding: 50px 20px 30px;
-            text-align: center;
-            background: linear-gradient(180deg, #1f1629 0%, #181818 100%);
-            border-bottom: 1px solid var(--border);
-        }
-
-        .avatar-circle {
-            width: 80px;
-            height: 80px;
-            background: var(--accent);
-            border-radius: 22px;
-            margin: 0 auto 15px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 32px;
-            color: white;
-            font-weight: 700;
-            box-shadow: 0 8px 20px rgba(127, 73, 180, 0.3);
-            overflow: hidden;
-            border: 2px solid rgba(255,255,255,0.1);
-        }
-
-        .avatar-circle img { width: 100%; height: 100%; object-fit: cover; }
-
-        .drawer-nav {
-            flex: 1;
-            padding: 15px;
-            overflow-y: auto;
-        }
+        /* Верхняя часть меню (Навигация) */
+        .drawer-content { flex: 1; padding: 20px; overflow-y: auto; }
+        .drawer-header { padding: 20px 0; color: var(--white); font-weight: 800; font-size: 22px; letter-spacing: -1px; display: flex; align-items: center; gap: 10px; }
 
         .nav-link {
-            width: 100%;
-            background: none;
-            border: none;
-            color: var(--text-gray);
-            padding: 14px 18px;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            cursor: pointer;
-            border-radius: 12px;
-            transition: 0.2s;
-            font-size: 15px;
-            margin-bottom: 5px;
-            text-align: left;
+            width: 100%; background: none; border: none; color: var(--text-gray);
+            padding: 14px 16px; display: flex; align-items: center; gap: 14px;
+            cursor: pointer; border-radius: 12px; transition: 0.2s; font-size: 15px; margin-bottom: 6px;
         }
+        .nav-link:hover { background: rgba(127, 73, 180, 0.1); color: var(--white); }
+        .nav-link i { color: var(--accent); width: 20px; height: 20px; }
 
-        .nav-link:hover {
-            background: rgba(127, 73, 180, 0.15);
-            color: var(--white);
-        }
-
-        .nav-link i { color: var(--accent); width: 20px; }
-
-        /* --- SIDEBAR (СПИСОК ЧАТОВ) --- */
-        .sidebar {
-            width: 350px;
-            min-width: 350px;
-            background: var(--bg-card);
-            border-right: 1px solid var(--border);
-            display: flex;
-            flex-direction: column;
-            z-index: 100;
-        }
-
-        .header-tools {
-            padding: 20px 15px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .burger-icon {
-            cursor: pointer;
-            color: var(--accent);
-            display: flex;
-            align-items: center;
-            transition: 0.2s;
-        }
-
-        .search-wrapper {
-            flex: 1;
-            background: #0a0a0a;
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            padding: 0 12px;
-        }
-
-        .search-wrapper input {
-            background: none;
-            border: none;
-            color: white;
-            padding: 10px 5px;
-            width: 100%;
-            outline: none;
-            font-size: 14px;
-        }
-
-        .chats-scroll {
-            flex: 1;
-            overflow-y: auto;
-            padding: 10px;
-        }
-
-        .chat-card {
+        /* НИЖНИЙ ПРОФИЛЬ (ЗАКРЕПЛЕН) */
+        .drawer-footer {
+            background: #0a0a0a; border-top: 1px solid var(--border);
             padding: 15px;
-            border-radius: 15px;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            cursor: pointer;
-            transition: 0.2s;
-            margin-bottom: 8px;
         }
 
-        .chat-card:hover { background: rgba(255,255,255,0.03); }
-
-        /* --- MAIN VIEW (ОКНО ПЕРЕПИСКИ / ПРИВЕТСТВИЕ) --- */
-        .main-panel {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            background: var(--bg-deep);
-            justify-content: center;
-            align-items: center;
-            position: relative;
+        .profile-card {
+            background: #181818; border-radius: 16px; padding: 12px;
+            display: flex; align-items: center; gap: 12px; border: 1px solid rgba(255,255,255,0.03);
+            cursor: pointer; transition: 0.2s;
         }
+        .profile-card:hover { border-color: var(--accent); }
 
-        .welcome-hero h1 {
-            font-size: 64px;
-            color: var(--accent);
-            margin: 0;
-            letter-spacing: -3px;
-            font-weight: 700;
+        .p-avatar {
+            width: 48px; height: 48px; min-width: 48px;
+            background: var(--accent); border-radius: 14px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px; color: white; font-weight: 700;
+            overflow: hidden; border: 1px solid rgba(255,255,255,0.1);
         }
+        .p-avatar img { width: 100%; height: 100%; object-fit: cover; }
 
-        .clock-display {
-            font-size: 22px;
-            margin-top: 15px;
-            color: var(--text-gray);
-            font-weight: 300;
-            letter-spacing: 2px;
+        .p-info { overflow: hidden; line-height: 1.2; }
+        .p-realname { display: block; color: var(--white); font-weight: 600; font-size: 14px; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+        .p-username { display: block; color: var(--accent); font-size: 11px; font-weight: 700; text-transform: uppercase; margin-top: 2px; }
+
+        /* --- SIDEBAR (ЧАТЫ) --- */
+        .sidebar { width: 350px; min-width: 350px; background: var(--bg-card); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+        .sidebar-header { padding: 15px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; }
+        .burger-btn { background: none; border: none; color: var(--accent); cursor: pointer; padding: 8px; display: flex; align-items: center; }
+
+        .search-box {
+            flex: 1; background: #080808; border-radius: 12px;
+            padding: 8px 12px; display: flex; align-items: center; gap: 10px; border: 1px solid rgba(255,255,255,0.05);
         }
+        .search-box input { background: none; border: none; color: white; font-size: 14px; width: 100%; }
+
+        /* --- MAIN VIEW --- */
+        .main-panel { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; background: var(--bg-deep); }
+        .welcome-title { font-size: 80px; font-weight: 900; color: var(--accent); letter-spacing: -4px; margin: 0; }
+        .clock { font-size: 20px; font-weight: 300; letter-spacing: 5px; color: var(--text-gray); margin-top: 10px; opacity: 0.5; }
 
         /* --- OVERLAY --- */
-        .overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.6);
-            backdrop-filter: blur(4px);
-            z-index: 1500;
-        }
+        .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 1500; }
         .overlay.active { display: block; }
 
-        /* --- ADAPTIVITY --- */
-        @media (max-width: 850px) {
-            .main-panel { display: none; }
-            .sidebar { width: 100%; min-width: 100%; border-right: none; }
-        }
+        @media (max-width: 850px) { .main-panel { display: none; } .sidebar { width: 100%; } }
     </style>
 </head>
 <body>
@@ -232,134 +123,98 @@
     <div class="overlay" id="overlay" onclick="toggleMenu()"></div>
 
     <nav class="drawer" id="drawer">
-        <div class="mini-profile">
-            <div class="avatar-circle" id="m-avatar">?</div>
-            <h3 id="m-username" style="margin:0; color:var(--white); font-size: 20px;">Username</h3>
-            <p id="m-desc" style="font-size:13px; opacity:0.5; margin:8px 0 0 0;">Status Loading...</p>
-        </div>
-        
-        <div class="drawer-nav">
+        <div class="drawer-content">
+            <div class="drawer-header">
+                <i data-lucide="zap" style="fill: var(--accent)"></i> Mewnly
+            </div>
             <button class="nav-link" onclick="location.href='profile.html'"><i data-lucide="user"></i> Профиль</button>
             <button class="nav-link" onclick="location.href='friends.html'"><i data-lucide="users"></i> Друзья</button>
             <button class="nav-link" onclick="location.href='settings.html'"><i data-lucide="settings"></i> Настройки</button>
-            <button class="nav-link" onclick="location.href='updates.html'"><i data-lucide="refresh-cw"></i> Обновления</button>
-            <button class="nav-link" onclick="location.href='creator.html'"><i data-lucide="code"></i> Разработчик</button>
+            <button class="nav-link" onclick="location.href='updates.html'"><i data-lucide="refresh-cw"></i> Что нового?</button>
             
-            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.05);">
-                <button class="nav-link" onclick="logout()" style="color: #ff5555;">
-                    <i data-lucide="log-out" style="color: #ff5555;"></i> Выйти
-                </button>
+            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.05);">
+                <button class="nav-link" onclick="logout()" style="color: #ff5e5e;"><i data-lucide="log-out"></i> Выход</button>
+            </div>
+        </div>
+
+        <div class="drawer-footer">
+            <div class="profile-card" onclick="location.href='profile.html'">
+                <div class="p-avatar" id="footer-avatar">?</div>
+                <div class="p-info">
+                    <span class="p-realname" id="footer-name">Загрузка...</span>
+                    <span class="p-username" id="footer-nick">@user</span>
+                </div>
             </div>
         </div>
     </nav>
 
     <div class="app-container">
-        
         <aside class="sidebar">
-            <div class="header-tools">
-                <div class="burger-icon" onclick="toggleMenu()">
+            <div class="sidebar-header">
+                <button class="burger-btn" onclick="toggleMenu()">
                     <i data-lucide="menu"></i>
-                </div>
-                <div class="search-wrapper">
-                    <i data-lucide="search" size="18" style="opacity: 0.3;"></i>
-                    <input type="text" id="searchInput" placeholder="Поиск в Mewnly" onkeydown="handleSearch(event)">
+                </button>
+                <div class="search-box">
+                    <i data-lucide="search" size="16" style="opacity: 0.3;"></i>
+                    <input type="text" placeholder="Поиск в Mewnly">
                 </div>
             </div>
-
-            <div class="chats-scroll" id="chatList">
-                <div class="chat-card">
-                    <div style="width:50px; height:50px; border-radius:12px; background: #252525; display:flex; align-items:center; justify-content:center;">
-                        <i data-lucide="message-square" style="color:var(--accent)"></i>
-                    </div>
-                    <div style="flex:1">
-                        <div style="color:var(--white); font-weight:600; font-size:15px;">Mewnly Support</div>
-                        <div style="font-size:13px; opacity:0.5;">Добро пожаловать в систему!</div>
-                    </div>
-                </div>
+            
+            <div style="padding: 20px; text-align: center; opacity: 0.3;">
+                <i data-lucide="message-square" size="40"></i>
+                <p style="font-size: 13px;">Чатов пока нет</p>
             </div>
         </aside>
 
         <main class="main-panel">
-            <div class="welcome-hero">
-                <h1>Mewnly</h1>
-            </div>
-            <div class="clock-display" id="clock">00:00:00</div>
+            <h1 class="welcome-title">Mewnly</h1>
+            <div class="clock" id="clock">00:00:00</div>
         </main>
-
     </div>
 
     <script>
-        // Инициализация иконок
         lucide.createIcons();
+        const userNick = localStorage.getItem('mewnly_user');
 
-        // Конфигурация
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbweU4Y37HpasEMyfSD-kEnmQI0UiObmFgVe9FPXlejgB2r7ZJUfyoeygWs99SZQ8M1O/exec'; // <--- ОБЯЗАТЕЛЬНО ВСТАВЬ СВОЙ URL
-        const currentUser = localStorage.getItem('mewnly_user');
-
-        // Проверка авторизации
-        if (!currentUser) {
-            window.location.href = '../index.html';
-        } else {
-            document.getElementById('m-username').innerText = currentUser;
-            document.getElementById('m-avatar').innerText = currentUser[0].toUpperCase();
-        }
-
-        // --- ЛОГИКА ИНТЕРФЕЙСА ---
+        if (!userNick) window.location.href = '../index.html';
 
         function toggleMenu() {
-            const drawer = document.getElementById('drawer');
-            const overlay = document.getElementById('overlay');
-            drawer.classList.toggle('open');
-            overlay.classList.toggle('active');
-        }
-
-        function handleSearch(e) {
-            if (e.key === 'Enter') {
-                const query = e.target.value.trim();
-                if (query) {
-                    window.location.href = `search.html?query=${encodeURIComponent(query)}`;
-                }
-            }
+            document.getElementById('drawer').classList.toggle('open');
+            document.getElementById('overlay').classList.toggle('active');
         }
 
         function updateClock() {
-            const clock = document.getElementById('clock');
-            if (clock) {
-                const now = new Date();
-                clock.innerText = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            }
+            document.getElementById('clock').innerText = new Date().toLocaleTimeString('ru-RU');
         }
         setInterval(updateClock, 1000);
         updateClock();
 
-        function logout() {
-            if (confirm("Вы действительно хотите выйти?")) {
-                localStorage.removeItem('mewnly_user');
+        async function logout() {
+            if (confirm("Выйти?")) {
+                await window.firebaseLogout();
+                localStorage.clear();
                 window.location.href = '../index.html';
             }
         }
 
-        // --- ЗАГРУЗКА ДАННЫХ ПРОФИЛЯ ---
-
-        async function loadProfile() {
-            try {
-                const response = await fetch(SCRIPT_URL, {
-                    method: 'POST',
-                    body: JSON.stringify({ action: 'getUserData', username: currentUser })
-                });
+        async function init() {
+            const data = await window.loadFirebaseProfile(userNick);
+            if (data) {
+                // Имя и ник
+                document.getElementById('footer-name').innerText = data.realName || "Без имени";
+                document.getElementById('footer-nick').innerText = "@" + data.username;
                 
-                const data = await response.json();
-                if (data.desc) document.getElementById('m-desc').innerText = data.desc;
+                // Аватарка
+                const avatarDiv = document.getElementById('footer-avatar');
                 if (data.avatar) {
-                    document.getElementById('m-avatar').innerHTML = `<img src="${data.avatar}" alt="avatar">`;
+                    avatarDiv.innerHTML = `<img src="${data.avatar}" alt="pfp">`;
+                } else {
+                    avatarDiv.innerText = data.username[0].toUpperCase();
                 }
-            } catch (err) {
-                document.getElementById('m-desc').innerText = "Безопасное соединение активно";
             }
         }
 
-        loadProfile();
+        window.onload = init;
     </script>
 </body>
 </html>
-

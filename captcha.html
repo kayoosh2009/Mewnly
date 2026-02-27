@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mewnly — Проверка</title>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --bg: #0f0f0f;
+            --card: #181818;
+            --accent: #7F49B4;
+            --text: #CFCFCF;
+            --border: rgba(127, 73, 180, 0.2);
+        }
+
+        body {
+            margin: 0; background: var(--bg); color: var(--text);
+            font-family: 'Inter', sans-serif;
+            display: flex; justify-content: center; align-items: center; min-height: 100vh;
+        }
+
+        .captcha-box {
+            background: var(--card);
+            padding: 25px;
+            border-radius: 24px;
+            border: 1px solid var(--border);
+            width: 100%;
+            max-width: 350px;
+            text-align: center;
+        }
+
+        .header {
+            background: var(--accent);
+            color: white;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .header h2 { margin: 0; font-size: 18px; }
+        .header p { margin: 5px 0 0; font-size: 13px; opacity: 0.9; }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .cell {
+            aspect-ratio: 1;
+            background: #222;
+            border-radius: 8px;
+            cursor: pointer;
+            overflow: hidden;
+            transition: 0.2s;
+            position: relative;
+        }
+
+        .cell:hover { opacity: 0.8; transform: scale(0.98); }
+        .cell img { width: 100%; height: 100%; object-fit: cover; }
+
+        .footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid var(--border);
+            padding-top: 15px;
+        }
+
+        .btn-verify {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<div class="captcha-box">
+    <div class="header">
+        <p>Выберите все квадраты, где есть</p>
+        <h2 id="target-name">Фембой</h2>
+    </div>
+
+    <div class="grid" id="grid">
+        </div>
+
+    <div class="footer">
+        <i data-lucide="refresh-cw" style="cursor:pointer; opacity:0.5" onclick="generateGrid()"></i>
+        <button class="btn-verify" onclick="checkCaptcha()">Подтвердить</button>
+    </div>
+</div>
+
+<script>
+    lucide.createIcons();
+
+    // Сюда вставь ссылки на картинки (5 обычных, 4 фембоя например)
+    const images = {
+        femboy: [
+            "https://i.pinimg.com/736x/94/6a/26/946a26b67c40828182577ab68462bf54.jpg",
+            "https://i.pinimg.com/1200x/8e/76/28/8e7628fd6ae191d8329701c22d1f45ae.jpg",
+            "https://i.pinimg.com/736x/68/af/2b/68af2babcd6eafbb3c0b54f7c4d14149.jpg",
+            "https://i.pinimg.com/736x/ed/74/a3/ed74a3cacfb1f0c0f6519fa2e03e4586.jpg"
+        ],
+        other: [
+            "https://i.pinimg.com/736x/b1/5d/50/b15d50b028c6aaa61caf567c9e23ef12.jpg",
+            "https://i.pinimg.com/736x/86/5d/6d/865d6d55a2f1be71f05b695212b42daf.jpg",
+            "https://i.pinimg.com/1200x/af/dd/a2/afdda2da527a42886cb1c1109e967e59.jpg",
+            "https://i.pinimg.com/736x/80/9a/a6/809aa66523182c99fcd264d1617cabf0.jpg",
+            "https://i.pinimg.com/736x/4c/c8/ac/4cc8acfdc01e651cbfaad9a40b5227e9.jpg"
+        ]
+    };
+
+    let selectedCells = new Set();
+    let correctCells = new Set();
+
+    function generateGrid() {
+        const grid = document.getElementById('grid');
+        grid.innerHTML = '';
+        selectedCells.clear();
+        correctCells.clear();
+
+        // Создаем массив из 9 элементов (4 правильных, 5 неправильных)
+        let pool = [];
+        images.femboy.forEach(url => pool.push({ url, isTarget: true }));
+        images.other.forEach(url => pool.push({ url, isTarget: false }));
+        
+        // Перемешиваем
+        pool.sort(() => Math.random() - 0.5);
+
+        pool.forEach((item, index) => {
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            cell.innerHTML = `<img src="${item.url}">`;
+            cell.onclick = () => {
+                cell.style.border = selectedCells.has(index) ? 'none' : '4px solid var(--accent)';
+                cell.style.padding = selectedCells.has(index) ? '0' : '4px';
+                if (selectedCells.has(index)) selectedCells.delete(index);
+                else selectedCells.add(index);
+            };
+            if (item.isTarget) correctCells.add(index);
+            grid.appendChild(cell);
+        });
+    }
+
+    function checkCaptcha() {
+        // Проверяем: выбраны ли все правильные и не выбраны ли неправильные
+        const isCorrect = correctCells.size === selectedCells.size && 
+                          [...correctCells].every(value => selectedCells.has(value));
+
+        if (isCorrect) {
+            alert("Проверка пройдена!");
+            window.location.href = "app/dash.html"; // Твоя страница входа
+        } else {
+            alert("Ошибка! Попробуйте еще раз.");
+            generateGrid();
+        }
+    }
+
+    generateGrid();
+</script>
+
+</body>
+</html>

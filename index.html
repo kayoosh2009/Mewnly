@@ -174,7 +174,7 @@
     }
 
     window.onload = () => {
-        if (localStorage.getItem('mewnly_user')) window.location.href = 'app/dash.html';
+        if (localStorage.getItem('mewnly_user')) window.location.href = 'captcha.html';
     };
 
     function toggleMode() {
@@ -254,7 +254,7 @@
 
             if (result === "SUCCESS_LOGIN" || result === "SUCCESS_REG") {
                 localStorage.setItem('mewnly_user', user);
-                window.location.href = 'app/dash.html';
+                window.location.href = 'captcha.html';
             } else {
                 alert("Server: " + result);
                 btn.disabled = false;

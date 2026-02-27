@@ -4,118 +4,111 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mewnly — Stealth Access</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyB3YsqmPng3BdsgbZXs-Ok1c5Z4e1HZhkY",
+            authDomain: "mewnly.firebaseapp.com",
+            projectId: "mewnly",
+            storageBucket: "mewnly.firebasestorage.app",
+            messagingSenderId: "854522459869",
+            appId: "1:854522459869:web:edc0df5aad55ca1f4e8d34"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        // Проверка ника на уникальность
+        window.isUsernameTaken = async (username) => {
+            const q = query(collection(db, "users"), where("username", "==", username.toLowerCase()));
+            const querySnapshot = await getDocs(q);
+            return !querySnapshot.empty;
+        };
+
+        window.firebaseLogin = (email, pass) => signInWithEmailAndPassword(auth, email, pass);
+        window.firebaseRegister = (email, pass) => createUserWithEmailAndPassword(auth, email, pass);
+        window.saveUserData = (uid, data) => setDoc(doc(db, "users", uid), data);
+        window.getUserByNick = async (nick) => {
+            const q = query(collection(db, "users"), where("username", "==", nick.toLowerCase()));
+            return await getDocs(q);
+        };
+    </script>
+
     <style>
         :root {
             --bg-deep: #141414;
-            --accent-purple: #7F49B4;
-            --text-light: #CFCFCF;
-            --bg-card: #1c1c1c;
-            --input-bg: #0a0a0a;
+            --accent: #7F49B4;
+            --text: #CFCFCF;
+            --card: #1c1c1c;
+            --input: #0a0a0a;
             --white: #ffffff;
         }
 
         body {
-            background-color: var(--bg-deep);
-            color: var(--text-light);
-            font-family: 'Inter', -apple-system, sans-serif;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-            overflow: hidden;
+            background: var(--bg-deep); color: var(--text);
+            font-family: 'Inter', sans-serif;
+            display: flex; align-items: center; justify-content: center;
+            min-height: 100vh; margin: 0; padding: 20px;
         }
 
         .auth-card {
-            background: var(--bg-card);
-            padding: 40px;
-            border-radius: 24px;
-            width: 100%;
-            max-width: 380px;
-            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.7);
-            border: 1px solid rgba(127, 73, 180, 0.1);
-            text-align: center;
+            background: var(--card); padding: 35px; border-radius: 24px;
+            width: 100%; max-width: 400px; text-align: center;
+            border: 1px solid rgba(127, 73, 180, 0.2);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.6);
         }
 
-        h2 { margin: 0 0 10px 0; color: var(--white); font-size: 26px; }
-        .subtitle { color: var(--text-light); font-size: 14px; margin-bottom: 30px; opacity: 0.7; }
+        h2 { color: var(--white); margin: 0 0 10px; font-size: 28px; }
+        .subtitle { font-size: 14px; opacity: 0.6; margin-bottom: 25px; }
 
-        .input-group { text-align: left; margin-bottom: 18px; position: relative; }
-        label {
-            display: block;
-            color: var(--accent-purple);
-            text-transform: uppercase;
-            font-size: 11px;
-            font-weight: 800;
-            margin-bottom: 6px;
-            letter-spacing: 1px;
-        }
+        .input-group { text-align: left; margin-bottom: 15px; position: relative; }
+        label { display: block; color: var(--accent); font-size: 10px; font-weight: 800; text-transform: uppercase; margin-bottom: 5px; letter-spacing: 1px; }
 
         input {
-            width: 100%;
-            padding: 14px 45px 14px 14px; /* Отступ справа для иконки */
-            background: var(--input-bg);
-            border: 1px solid rgba(207, 207, 207, 0.1);
-            border-radius: 10px;
-            color: var(--white);
-            font-size: 15px;
-            box-sizing: border-box;
-            transition: 0.3s;
+            width: 100%; padding: 12px 14px; background: var(--input);
+            border: 1px solid rgba(255,255,255,0.05); border-radius: 10px;
+            color: white; font-size: 14px; box-sizing: border-box; transition: 0.3s;
         }
+        input:focus { border-color: var(--accent); outline: none; }
 
-        input:focus { outline: none; border-color: var(--accent-purple); }
-
-        /* Иконка глаза/замка */
+        /* Иконка замка/глаза */
         .toggle-password {
-            position: absolute;
-            right: 14px;
-            bottom: 11px;
-            width: 24px;
-            height: 24px;
-            cursor: pointer;
-            opacity: 0.5;
-            transition: 0.3s;
-            filter: invert(90%) sepia(5%) saturate(20%) hue-rotate(180deg); /* Делаем иконку светлой под CFCFCF */
+            position: absolute; right: 12px; bottom: 10px;
+            width: 20px; height: 20px; cursor: pointer; opacity: 0.4; transition: 0.3s;
+            filter: invert(1);
         }
+        .toggle-password:hover { opacity: 1; }
+        .toggle-password.active { filter: sepia(100%) saturate(500%) hue-rotate(240deg); opacity: 1; }
 
-        .toggle-password:hover { opacity: 1; filter: none; }
-        .toggle-password.active { 
-            opacity: 1; 
-            filter: invert(34%) sepia(85%) saturate(945%) hue-rotate(235deg) brightness(85%) contrast(85%); /* Фиолетовый фильтр */
+        /* Аватар превью */
+        .avatar-upload {
+            width: 80px; height: 80px; background: var(--input);
+            border-radius: 20px; margin: 0 auto 15px; border: 2px dashed var(--accent);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; overflow: hidden; position: relative;
+        }
+        .avatar-upload img { width: 100%; height: 100%; object-fit: cover; }
+        #file-input { display: none; }
+
+        .seed-box {
+            display: none; background: #000; padding: 15px; border-radius: 10px;
+            border: 1px solid var(--accent); color: var(--accent);
+            font-family: monospace; font-size: 12px; margin: 15px 0; text-align: left;
         }
 
         button {
-            width: 100%;
-            padding: 14px;
-            background-color: var(--accent-purple);
-            color: var(--white);
-            border: none;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: 0.3s;
-            margin-top: 10px;
+            width: 100%; padding: 14px; background: var(--accent); color: white;
+            border: none; border-radius: 12px; font-weight: 700; cursor: pointer;
+            transition: 0.3s; margin-top: 10px;
         }
+        button:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(127, 73, 180, 0.4); }
 
-        button:hover { background-color: #8f5dc4; transform: translateY(-1px); }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
-
-        .link { color: var(--accent-purple); text-decoration: none; font-weight: 600; cursor: pointer; }
-        .seed-box {
-            display: none;
-            background: #000;
-            padding: 14px;
-            border: 1px dashed var(--accent-purple);
-            border-radius: 8px;
-            color: var(--accent-purple);
-            font-family: monospace;
-            font-size: 12px;
-            margin-bottom: 20px;
-            text-align: left;
-        }
-
+        .link { color: var(--accent); font-weight: 600; cursor: pointer; }
         .hidden { display: none; }
     </style>
 </head>
@@ -123,62 +116,77 @@
 
 <div class="auth-card">
     <h2 id="title">Mewnly</h2>
-    <div class="subtitle" id="subtitle">Secure communication portal</div>
+    <div class="subtitle" id="subtitle">Stealth communication portal</div>
+
+    <div id="reg-fields" class="hidden">
+        <div class="avatar-upload" onclick="document.getElementById('file-input').click()">
+            <span id="plus" style="font-size: 24px; opacity: 0.5;">+</span>
+            <img id="avatar-preview" class="hidden">
+        </div>
+        <input type="file" id="file-input" accept="image/*" onchange="previewFile()">
+
+        <div class="input-group">
+            <label>Real Name</label>
+            <input type="text" id="realname" placeholder="John Doe">
+        </div>
+        <div class="input-group">
+            <label>Birthday</label>
+            <input type="date" id="birthdate">
+        </div>
+    </div>
 
     <div class="input-group">
         <label>Username</label>
-        <input type="text" id="username" spellcheck="false">
+        <input type="text" id="username" placeholder="cyber_femboy">
     </div>
 
     <div class="input-group">
         <label>Password</label>
         <input type="password" id="password">
-        <img src="https://img.icons8.com/outline/64/7F49B4/padlock-outline.png" 
-             class="toggle-password" 
-             onclick="togglePasswordVisibility('password', this)" 
-             title="Show/Hide Password">
+        <img src="https://cdn-icons-png.flaticon.com/512/3064/3064155.png" class="toggle-password" onclick="togglePass('password', this)">
     </div>
 
     <div class="input-group hidden" id="confirm-group">
         <label>Verify Password</label>
         <input type="password" id="confirm-password">
-        <img src="https://img.icons8.com/outline/64/7F49B4/padlock-outline.png" 
-             class="toggle-password" 
-             onclick="togglePasswordVisibility('confirm-password', this)">
+        <img src="https://cdn-icons-png.flaticon.com/512/3064/3064155.png" class="toggle-password" onclick="togglePass('confirm-password', this)">
     </div>
 
     <div id="seed-display" class="seed-box"></div>
 
     <button id="main-btn" onclick="handleAction()">Log In</button>
 
-    <div style="margin-top: 25px; font-size: 13px;">
+    <div style="margin-top: 20px; font-size: 13px;">
         <span id="switch-text">New here?</span> 
         <span class="link" onclick="toggleMode()" id="switch-link">Create Account</span>
     </div>
 </div>
 
 <script>
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbweU4Y37HpasEMyfSD-kEnmQI0UiObmFgVe9FPXlejgB2r7ZJUfyoeygWs99SZQ8M1O/exec';
     let isLogin = true;
+    let base64Avatar = "";
 
-    // Функция переключения видимости пароля
-    function togglePasswordVisibility(inputId, imgEl) {
-        const input = document.getElementById(inputId);
-        if (input.type === "password") {
-            input.type = "text";
-            imgEl.classList.add('active');
-        } else {
-            input.type = "password";
-            imgEl.classList.remove('active');
-        }
+    function togglePass(id, el) {
+        const inp = document.getElementById(id);
+        inp.type = inp.type === "password" ? "text" : "password";
+        el.classList.toggle('active');
     }
 
-    window.onload = () => {
-        if (localStorage.getItem('mewnly_user')) window.location.href = 'captcha.html';
-    };
+    function previewFile() {
+        const file = document.getElementById('file-input').files[0];
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            document.getElementById('avatar-preview').src = reader.result;
+            document.getElementById('avatar-preview').classList.remove('hidden');
+            document.getElementById('plus').classList.add('hidden');
+            base64Avatar = reader.result;
+        }
+        if (file) reader.readAsDataURL(file);
+    }
 
     function toggleMode() {
         isLogin = !isLogin;
+        document.getElementById('reg-fields').classList.toggle('hidden');
         document.getElementById('confirm-group').classList.toggle('hidden');
         document.getElementById('title').innerText = isLogin ? 'Mewnly' : 'Join Mewnly';
         document.getElementById('main-btn').innerText = isLogin ? 'Log In' : 'Continue';
@@ -187,88 +195,66 @@
     }
 
     async function handleAction() {
-    const user = document.getElementById('username').value.trim();
-    const pass = document.getElementById('password').value;
-    const btn = document.getElementById('main-btn');
+        const user = document.getElementById('username').value.trim().toLowerCase();
+        const pass = document.getElementById('password').value;
+        const btn = document.getElementById('main-btn');
 
-    if (!user || !pass) return alert("Заполните все поля.");
-    
-    // Проверка на длину ника (твое новое ограничение)
-    if (user.length > 50) return alert("Никнейм не может быть длиннее 50 символов.");
-
-    if (!isLogin) {
-        const confirm = document.getElementById('confirm-password').value;
-        if (pass !== confirm) return alert("Пароли не совпадают.");
-        
-        const seedBox = document.getElementById('seed-display');
-        
-        // Проверяем, показана ли уже сид-фраза
-        if (seedBox.style.display !== 'block') {
-            // Называем массив просто 'words'
-            const words = [
-                "alpha", "arctic", "atlas", "aurora", "axis", "azure", "beacon", "boreal", "bullet", "canyon",
-                "carbon", "cobalt", "comet", "copper", "cosmic", "crater", "crypto", "crystal", "cyber", "delta",
-                "digit", "dragon", "drift", "eagle", "echo", "eclipse", "ember", "engine", "energy", "enigma",
-                "ethnic", "falcon", "fiber", "flame", "flare", "flash", "flight", "fossil", "frozen", "fusion",
-                "galaxy", "gamma", "ghost", "glacier", "glass", "gravity", "grid", "habit", "helix", "hollow",
-                "horizon", "hybrid", "hyper", "icon", "igloo", "impact", "indigo", "infinity", "infra", "ivory",
-                "jet", "jewel", "jester", "jump", "jungle", "karma", "keen", "kinetic", "lava", "legend",
-                "lens", "leopard", "level", "light", "lunar", "macro", "magic", "magnet", "magma", "mantle",
-                "marble", "marine", "mars", "master", "medal", "melody", "metal", "meteor", "micro", "mind",
-                "mirror", "mist", "mobile", "modern", "module", "moment", "moon", "motive", "mountain", "mystic"
-            ];
-
-            // Теперь 'words' определен и ошибки не будет
-            const seed = Array.from({length: 12}, () => words[Math.floor(Math.random() * words.length)]).join(" ");
-            
-            seedBox.innerText = "ВАША СИД-ФРАЗА (СОХРАНИТЕ!): \n\n" + seed;
-            seedBox.style.display = 'block';
-            btn.innerText = "Я сохранил. Создать аккаунт";
-            return;
-        }
-    }
+        if (!user || !pass) return alert("Fill mandatory fields!");
 
         btn.disabled = true;
-        btn.innerText = "Syncing...";
+        btn.innerText = "Processing...";
 
-        let ip = "0.0.0.0";
         try {
-            const res = await fetch('https://api.ipify.org?format=json');
-            ip = (await res.json()).ip;
-        } catch(e) {}
-
-        const passHash = CryptoJS.SHA256(pass).toString();
-        
-        try {
-            const response = await fetch(`${SCRIPT_URL}?ip=${ip}`, {
-                method: 'POST',
-                body: JSON.stringify({
-                    action: isLogin ? 'login' : 'register',
-                    username: user,
-                    password: passHash,
-                    seed: document.getElementById('seed-display').innerText || ""
-                })
-            });
-
-            const result = await response.text();
-
-            if (result === "SUCCESS_LOGIN" || result === "SUCCESS_REG") {
+            if (isLogin) {
+                // Вход по никнейму (ищем email в базе по нику)
+                const querySnapshot = await window.getUserByNick(user);
+                if (querySnapshot.empty) throw new Error("User not found");
+                
+                const userData = querySnapshot.docs[0].data();
+                await window.firebaseLogin(userData.email, pass);
+                
                 localStorage.setItem('mewnly_user', user);
                 window.location.href = 'captcha.html';
+
             } else {
-                alert("Server: " + result);
-                btn.disabled = false;
-                btn.innerText = isLogin ? "Log In" : "Continue";
+                // Регистрация
+                const seedBox = document.getElementById('seed-display');
+                if (seedBox.style.display !== 'block') {
+                    if (await window.isUsernameTaken(user)) throw new Error("Username taken!");
+                    
+                    const words = ["alpha", "arctic", "atlas", "aurora", "axis", "azure", "beacon", "boreal", "bullet", "canyon", "carbon", "cobalt", "comet", "copper", "cosmic", "crater", "crypto", "crystal", "cyber", "delta", "digit", "dragon", "drift", "eagle", "echo", "eclipse", "ember", "engine", "energy", "enigma", "ethnic", "falcon", "fiber", "flame", "flare", "flash", "flight", "fossil", "frozen", "fusion", "galaxy", "gamma", "ghost", "glacier", "glass", "gravity", "grid", "habit", "helix", "hollow", "horizon", "hybrid", "hyper", "icon", "igloo", "impact", "indigo", "infinity", "infra", "ivory", "jet", "jewel", "jester", "jump", "jungle", "karma", "keen", "kinetic", "lava", "legend", "lens", "leopard", "level", "light", "lunar", "macro", "magic", "magnet", "magma", "mantle", "marble", "marine", "mars", "master", "medal", "melody", "metal", "meteor", "micro", "mind", "mirror", "mist", "mobile", "modern", "module", "moment", "moon", "motive", "mountain", "mystic"];
+                    const seed = Array.from({length: 12}, () => words[Math.floor(Math.random()*words.length)]).join(" ");
+                    
+                    seedBox.innerText = "SAVE YOUR SEED:\n\n" + seed;
+                    seedBox.style.display = 'block';
+                    btn.disabled = false;
+                    btn.innerText = "I saved it. Finalize Register";
+                    return;
+                }
+
+                const email = `${user}@mewnly.internal`; // Скрытая почта
+                const userCredential = await window.firebaseRegister(email, pass);
+                
+                await window.saveUserData(userCredential.user.uid, {
+                    username: user,
+                    email: email,
+                    realName: document.getElementById('realname').value,
+                    birthDate: document.getElementById('birthdate').value,
+                    avatar: base64Avatar,
+                    seed: seedBox.innerText,
+                    createdAt: new Date().toISOString()
+                });
+
+                localStorage.setItem('mewnly_user', user);
+                window.location.href = 'captcha.html';
             }
-        } catch (err) {
-            alert("Error. Check your Script URL.");
+        } catch (e) {
+            alert(e.message);
             btn.disabled = false;
+            btn.innerText = isLogin ? "Log In" : "Continue";
         }
     }
 </script>
 
 </body>
 </html>
-
-
-

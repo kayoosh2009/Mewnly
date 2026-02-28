@@ -182,10 +182,13 @@
     <nav class="drawer" id="drawer">
         <div class="drawer-content">
             <div class="drawer-header"><i data-lucide="zap" style="fill: var(--accent)"></i> Mewnly</div>
+            <button class="nav-link" onclick="location.href='index.html'"><i data-lucide="message-square"></i> Сообщения</button>
             <button class="nav-link" onclick="location.href='profile.html'"><i data-lucide="user"></i> Профиль</button>
             <button class="nav-link" onclick="location.href='friends.html'"><i data-lucide="users"></i> Друзья</button>
+            <button class="nav-link" onclick="location.href='saved.html'"><i data-lucide="bookmark"></i> Сохраненное</button>
             <button class="nav-link" onclick="location.href='settings.html'"><i data-lucide="settings"></i> Настройки</button>
             <button class="nav-link" onclick="location.href='updates.html'"><i data-lucide="refresh-cw"></i> Что нового?</button>
+            
             <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.05);">
                 <button class="nav-link" onclick="logout()" style="color: #ff5e5e;"><i data-lucide="log-out"></i> Выход</button>
             </div>
@@ -261,7 +264,10 @@
             this.style.height = 'auto'; this.style.height = (this.scrollHeight) + 'px';
         });
         tArea.addEventListener('keydown', (e) => {
-            if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); document.getElementById('chatForm').requestSubmit(); }
+            if(e.key === 'Enter' && !e.shiftKey) { 
+                e.preventDefault(); 
+                document.getElementById('chatForm').dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+            }
         });
 
         async function openChat(nick) {
@@ -301,7 +307,7 @@
             });
         }
 
-        document.getElementById('chatForm').onsubmit = async (e) => {
+        document.getElementById('chatForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const val = tArea.value.trim(); if(!val) return;
             if(editingId) {
@@ -313,7 +319,7 @@
                 });
             }
             tArea.value = ''; tArea.style.height = 'auto';
-        };
+        });
 
         function showCtx(e, id, text, isMe) {
             e.preventDefault();
@@ -343,8 +349,6 @@
             document.getElementById('m-id').innerText = p.uid || "MW-0000";
             document.getElementById('m-reg-date').innerText = p.regDate || "2024-03-12";
 
-            const tag = document.getElementById('u-status-tag');
-            // В модалке используем тот же класс online-text для текста online
             document.getElementById('pModal').classList.add('active'); lucide.createIcons();
         }
 

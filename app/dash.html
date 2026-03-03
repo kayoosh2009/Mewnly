@@ -5,11 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Mewnly — Dashboard</title>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Fira+Code:wght@400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, query, where, getDocs, addDoc, updateDoc, orderBy, onSnapshot, serverTimestamp, or, and, deleteDoc, doc, getCountFromServer } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, query, where, getDocs, orderBy, limit, onSnapshot, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         import { getAuth, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
         const firebaseConfig = {
@@ -25,15 +25,20 @@
         const db = getFirestore(app);
         const auth = getAuth(app);
 
-        window.fb = { db, collection, query, where, getDocs, addDoc, updateDoc, orderBy, onSnapshot, serverTimestamp, or, and, deleteDoc, doc, getCountFromServer };
-
-        window.loadFirebaseProfile = async (username) => {
-            if(!username) return null;
-            const q = query(collection(db, "users"), where("username", "==", username.toLowerCase()));
+        window.loadProfile = async (nick) => {
+            const q = query(collection(db, "users"), where("username", "==", nick.toLowerCase()));
             const snap = await getDocs(q);
             return !snap.empty ? snap.docs[0].data() : null;
         };
-        window.firebaseLogout = () => signOut(auth);
+
+        window.watchLastMsg = (myNick, partnerNick, callback) => {
+            const q = query(collection(db, "messages"), 
+                where("from", "in", [myNick, partnerNick]),
+                where("to", "in", [myNick, partnerNick]),
+                orderBy("createdAt", "desc"), limit(1)
+            );
+            return onSnapshot(q, (snap) => { if (!snap.empty) callback(snap.docs[0].data()); });
+        };
     </script>
     
     <style>
@@ -44,337 +49,299 @@
             --text-gray: #a0a0a0;
             --white: #ffffff;
             --border: rgba(127, 73, 180, 0.15);
-            --danger: #ff5e5e;
         }
 
-        * { box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
-        body, html { margin: 0; padding: 0; height: 100%; background: var(--bg-deep); color: var(--text-gray); font-family: 'Inter', sans-serif; overflow: hidden; }
+        body, html { margin: 0; padding: 0; height: 100%; background: var(--bg-deep); color: var(--white); font-family: 'Inter', sans-serif; overflow: hidden; }
 
+        /* --- ПРЕЛОАДЕР --- */
+        #preloader {
+            position: fixed;
+            inset: 0;
+            background: #080808;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.6s;
+        }
+
+        .loader-content { text-align: center; }
+
+        .loader-logo {
+            width: 90px;
+            height: 90px;
+            margin-bottom: 25px;
+            animation: loaderRotate 2s infinite ease-in-out;
+            filter: drop-shadow(0 0 15px rgba(127, 73, 180, 0.4));
+        }
+
+        @keyframes loaderRotate {
+            0% { transform: scale(0.9) rotate(0deg); opacity: 0.6; }
+            50% { transform: scale(1.1) rotate(180deg); opacity: 1; }
+            100% { transform: scale(0.9) rotate(360deg); opacity: 0.6; }
+        }
+
+        .loader-quote {
+            font-size: 13px;
+            color: var(--accent);
+            font-weight: 600;
+            letter-spacing: 1px;
+            max-width: 300px;
+            height: 20px;
+            opacity: 0.8;
+        }
+
+        .loader-hidden { opacity: 0; visibility: hidden; }
+
+        /* --- ОСНОВНОЙ ИНТЕРФЕЙС --- */
         .app-container { display: flex; width: 100%; height: 100vh; }
 
-        /* --- DRAWER (МЕНЮ) --- */
-        .drawer {
-            position: fixed; left: -310px; top: 0; width: 300px; height: 100%;
-            background: #111; border-right: 1px solid var(--border);
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            z-index: 2000; display: flex; flex-direction: column;
-        }
-        .drawer.open { transform: translateX(310px); box-shadow: 15px 0 40px rgba(0,0,0,0.9); }
-        .drawer-content { flex: 1; padding: 20px; overflow-y: auto; }
-        .drawer-header { padding: 20px 0; color: var(--white); font-weight: 800; font-size: 22px; display: flex; align-items: center; gap: 10px; }
-        
-        .nav-link {
-            width: 100%; background: none; border: none; color: var(--text-gray);
-            padding: 14px 16px; display: flex; align-items: center; gap: 14px;
-            cursor: pointer; border-radius: 12px; transition: 0.2s; font-size: 15px; margin-bottom: 6px; text-align: left;
-        }
-        .nav-link:hover { background: rgba(127, 73, 180, 0.1); color: var(--white); }
-        .nav-link i { color: var(--accent); width: 20px; height: 20px; }
-        .drawer-footer { background: #0a0a0a; border-top: 1px solid var(--border); padding: 15px; }
-
-        /* --- SIDEBAR --- */
         .sidebar { width: 350px; min-width: 350px; background: var(--bg-card); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
         .sidebar-header { padding: 15px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; }
-        .burger-btn { background: none; border: none; color: var(--accent); cursor: pointer; padding: 8px; display: flex; align-items: center; }
-        .search-box { flex: 1; background: #080808; border-radius: 12px; padding: 8px 12px; display: flex; align-items: center; gap: 10px; border: 1px solid rgba(255,255,255,0.05); cursor: pointer; }
         
+        .logo-img { width: 32px; height: 32px; object-fit: contain; }
+        .burger-btn { background: none; border: none; color: var(--accent); cursor: pointer; padding: 8px; }
+
         #chatList { flex: 1; overflow-y: auto; padding: 10px; }
-        .chat-item { padding: 12px; display: flex; align-items: center; gap: 14px; cursor: pointer; border-radius: 14px; transition: 0.2s; margin-bottom: 4px; border: 1px solid transparent; }
-        .chat-item:hover { background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.01); }
-
-        /* --- MAIN PANEL & MESSAGES --- */
-        .main-panel { flex: 1; display: flex; flex-direction: column; background: var(--bg-deep); position: relative; }
-        #empty-view { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; }
-        .welcome-title { font-size: 80px; font-weight: 900; color: var(--accent); letter-spacing: -4px; margin: 0; }
-        .clock { font-size: 20px; letter-spacing: 5px; opacity: 0.5; margin-top: 10px; }
-
-        #chat-window { display: none; flex-direction: column; height: 100%; }
-        .chat-header { padding: 15px 25px; background: var(--bg-card); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 15px; cursor: pointer; }
-        .messages-container { flex: 1; overflow-y: auto; padding: 25px; display: flex; flex-direction: column; gap: 8px; }
         
-        /* СООБЩЕНИЯ */
-        .msg { max-width: 65%; padding: 10px 16px; border-radius: 18px; font-size: 15px; color: var(--white); position: relative; line-height: 1.4; white-space: pre-wrap; word-wrap: break-word; }
-        .msg.sent { align-self: flex-end; background: var(--accent); border-bottom-right-radius: 4px; }
-        .msg.received { align-self: flex-start; background: #222; border-bottom-left-radius: 4px; }
-        .msg-time { font-size: 10px; opacity: 0.5; margin-top: 4px; display: block; text-align: right; }
+        .chat-item { 
+            padding: 12px; display: flex; align-items: center; gap: 14px; cursor: pointer; 
+            border-radius: 16px; transition: 0.2s; margin-bottom: 4px; position: relative;
+        }
+        .chat-item:hover { background: rgba(255,255,255,0.04); }
+        .chat-item.active { background: rgba(127, 73, 180, 0.12); }
+        .chat-item.pinned { border-left: 3px solid var(--accent); background: rgba(127, 73, 180, 0.03); }
 
-        /* MARKDOWN & CODE */
-        .code-block { background: #000; border: 1px solid var(--border); border-radius: 10px; margin: 8px 0; position: relative; font-family: 'Fira Code', monospace; }
-        .code-header { display: flex; justify-content: flex-end; padding: 5px 10px; border-bottom: 1px solid rgba(255,255,255,0.05); }
-        .copy-btn { background: none; border: none; color: var(--accent); font-size: 10px; font-weight: 800; cursor: pointer; text-transform: uppercase; }
-        .code-content { padding: 12px; font-size: 13px; color: #ccc; overflow-x: auto; margin: 0; }
-
-        /* INPUT AREA */
-        .input-area { padding: 15px 25px; background: var(--bg-card); border-top: 1px solid var(--border); display: flex; gap: 12px; align-items: flex-end; }
-        .input-area textarea { flex: 1; background: #0a0a0a; border: 1px solid var(--border); border-radius: 12px; padding: 12px 15px; color: white; font-size: 15px; resize: none; max-height: 150px; font-family: inherit; line-height: 1.4; }
-
-        /* --- UI ELEMENTS --- */
-        .p-avatar { width: 44px; height: 44px; min-width: 44px; background: var(--accent); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: white; font-weight: 700; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); }
+        .p-avatar { width: 48px; height: 48px; background: var(--accent); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-weight: 700; overflow: hidden; }
         .p-avatar img { width: 100%; height: 100%; object-fit: cover; }
-        
-        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #555; display: inline-block; margin-right: 5px; }
-        .status-dot.online { background: #a855f7; box-shadow: 0 0 10px rgba(168, 85, 247, 0.5); }
-        .online-text { color: #a855f7; font-weight: 600; }
 
-        /* --- MODAL (ПРОФИЛЬ) --- */
-        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); display: none; align-items: center; justify-content: center; z-index: 6000; padding: 20px; }
-        .modal.active { display: flex; }
-        .modal-card { background: #121212; width: 100%; max-width: 380px; border-radius: 30px; border: 1px solid var(--border); overflow: hidden; position: relative; box-shadow: 0 20px 50px rgba(0,0,0,0.7); }
-        .modal-body { padding: 0 25px 30px; text-align: center; }
-        .m-banner { height: 80px; background: linear-gradient(45deg, #1a1a1a, #2a2a2a); border-bottom: 1px solid var(--border); }
-        .m-avatar { width: 100px; height: 100px; border-radius: 32px; background: var(--accent); margin: -50px auto 15px; display: flex; align-items: center; justify-content: center; font-size: 40px; color: white; font-weight: 800; border: 4px solid #121212; overflow: hidden; }
-        .m-avatar img { width: 100%; height: 100%; object-fit: cover; }
-        
-        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 20px 0; }
-        .stat-item { background: rgba(255,255,255,0.03); padding: 12px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.05); }
-        .stat-val { display: block; color: var(--accent); font-weight: 800; font-size: 18px; }
-        .stat-label { font-size: 10px; text-transform: uppercase; color: var(--text-gray); letter-spacing: 1px; }
+        .chat-info { flex: 1; overflow: hidden; }
+        .chat-top { display: flex; justify-content: space-between; align-items: center; }
+        .chat-name { font-weight: 700; font-size: 15px; color: var(--white); }
+        .msg-date { font-size: 10px; color: var(--accent); font-weight: 800; }
+        .last-msg { font-size: 13px; color: var(--text-gray); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
 
-        /* --- CONTEXT MENU --- */
-        #context-menu { position: fixed; background: #1a1a1a; border: 1px solid var(--border); border-radius: 12px; width: 190px; display: none; z-index: 5000; box-shadow: 0 10px 30px rgba(0,0,0,0.8); padding: 5px; }
-        .menu-item { padding: 10px 14px; font-size: 14px; color: white; cursor: pointer; display: flex; align-items: center; gap: 10px; border-radius: 8px; }
+        .main-panel { flex: 1; display: flex; flex-direction: column; position: relative; background: var(--bg-deep); }
+        #empty-view { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; }
+        .welcome-logo { width: 120px; opacity: 0.2; margin-bottom: 20px; filter: grayscale(1); }
+        .welcome-title { font-size: 60px; font-weight: 900; color: var(--accent); opacity: 0.1; margin: 0; }
+        .clock { font-size: 18px; letter-spacing: 4px; opacity: 0.4; font-weight: 600; margin-top: 10px; }
+        
+        #chat-frame { width: 100%; height: 100%; border: none; display: none; }
+
+        .drawer { position: fixed; left: -310px; top: 0; width: 300px; height: 100%; background: #0c0c0c; z-index: 2000; transition: 0.3s; border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+        .drawer.open { transform: translateX(310px); box-shadow: 20px 0 50px rgba(0,0,0,0.8); }
+        .drawer-content { flex: 1; padding: 25px; }
+        .nav-link { width: 100%; background: none; border: none; color: var(--text-gray); padding: 14px; display: flex; align-items: center; gap: 14px; cursor: pointer; border-radius: 12px; transition: 0.2s; font-size: 15px; text-align: left; text-decoration: none; margin-bottom: 5px; }
+        .nav-link:hover { background: rgba(127, 73, 180, 0.1); color: white; }
+        .nav-link i { color: var(--accent); }
+        
+        .drawer-footer { background: #050505; border-top: 1px solid var(--border); padding: 15px; }
+
+        #context-menu { position: fixed; background: #1a1a1a; border: 1px solid var(--border); border-radius: 12px; width: 190px; display: none; z-index: 5000; padding: 5px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); }
+        .menu-item { padding: 10px; color: white; cursor: pointer; display: flex; align-items: center; gap: 10px; border-radius: 8px; font-size: 14px; }
         .menu-item:hover { background: var(--accent); }
 
-        .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1500; }
+        .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 1500; backdrop-filter: blur(4px); }
         .overlay.active { display: block; }
-        
-        @media (max-width: 850px) { .sidebar { width: 100%; } .main-panel { display: none; } .main-panel.active { display: flex; position: fixed; inset: 0; z-index: 100; } }
     </style>
 </head>
 <body>
 
-    <div id="context-menu">
-        <div class="menu-item" id="menu-copy"><i data-lucide="copy" size="16"></i> Копировать</div>
-        <div class="menu-item" id="menu-reply"><i data-lucide="reply" size="16"></i> Ответить</div>
-        <div class="menu-item" id="menu-edit"><i data-lucide="pencil" size="16"></i> Изменить</div>
-        <div class="menu-item" id="menu-delete" style="color:#ff5e5e;"><i data-lucide="trash-2" size="16"></i> Удалить</div>
+<div id="preloader">
+    <div class="loader-content">
+        <img src="../img/logo.png" class="loader-logo" alt="Mewnly">
+        <div class="loader-quote" id="loaderQuote"><< Подключаемся к нейросети... >></div>
     </div>
+</div>
 
-    <div class="modal" id="pModal" onclick="this.classList.remove('active')">
-        <div class="modal-card" onclick="event.stopPropagation()">
-            <div class="m-banner" id="m-banner"></div>
-            <div class="modal-body">
-                <div class="m-avatar" id="m-av">?</div>
-                <h2 id="m-name" style="margin:0; color:white;">...</h2>
-                <div id="m-nick" style="color:var(--accent); font-weight:700; font-size:14px; margin-bottom:10px;">@user</div>
-                <p id="m-bio" style="font-size:14px; margin: 15px 0; line-height:1.4; color:var(--text-gray);">...</p>
-                
-                <div style="font-size: 12px; text-align: left; opacity: 0.5; margin-bottom: 15px;">
-                    <div>ID: <span id="m-id" style="color:white; font-family:'Fira Code';">MW-0000</span></div>
-                    <div>В Mewnly с: <span id="m-reg-date" style="color:white;">--.--.----</span></div>
-                </div>
+<div id="context-menu">
+    <div class="menu-item" id="menu-pin"><i data-lucide="pin" size="16"></i> Закрепить</div>
+    <div class="menu-item" id="menu-delete" style="color:#ff5e5e;"><i data-lucide="trash-2" size="16"></i> Удалить чат</div>
+</div>
 
-                <div class="stat-grid">
-                    <div class="stat-item"><span class="stat-val" id="m-msgs">0</span><span class="stat-label">Сообщений</span></div>
-                    <div class="stat-item"><span class="stat-val" id="m-frnds">0</span><span class="stat-label">Друзей</span></div>
-                </div>
+<div class="overlay" id="overlay" onclick="toggleMenu()"></div>
 
-                <div style="display:flex; gap:10px; margin-top:10px;">
-                    <button class="menu-item" style="flex:1; background:var(--accent); justify-content:center; font-weight:700;" onclick="alert('Добавлено!')"><i data-lucide="user-plus" size="16"></i> Дружить</button>
-                    <button class="menu-item" style="background:#1a1a1a; border:1px solid #333; color:#ff5e5e;" onclick="alert('Заблокирован')"><i data-lucide="slash" size="16"></i></button>
-                </div>
+<nav class="drawer" id="drawer">
+    <div class="drawer-content">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 40px;">
+            <img src="../img/logo.png" class="logo-img" alt="Logo">
+            <span style="font-size: 22px; font-weight: 900; letter-spacing: -1px;">Mewnly</span>
+        </div>
+        
+        <a href="dash.html" class="nav-link"><i data-lucide="message-square"></i> Сообщения</a>
+        <a href="profile.html" class="nav-link"><i data-lucide="user"></i> Профиль</a>
+        <a href="friends.html" class="nav-link"><i data-lucide="users"></i> Друзья</a>
+        <a href="saved.html" class="nav-link"><i data-lucide="bookmark"></i> Сохраненное</a>
+        <a href="settings.html" class="nav-link"><i data-lucide="settings"></i> Настройки</a>
+        <a href="updates.html" class="nav-link"><i data-lucide="refresh-cw"></i> Что нового?</a>
+        
+        <button onclick="logout()" class="nav-link" style="color: #ff5e5e; margin-top: 20px;"><i data-lucide="log-out"></i> Выход</button>
+    </div>
+    
+    <div class="drawer-footer">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <div class="p-avatar" id="footer-avatar" style="width:40px; height:40px; border-radius:10px;">?</div>
+            <div style="overflow:hidden;">
+                <div id="footer-name" style="font-weight:700; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">...</div>
+                <div id="footer-nick" style="color:var(--accent); font-size:11px;">@user</div>
             </div>
         </div>
     </div>
+</nav>
 
-    <div class="overlay" id="overlay" onclick="toggleMenu()"></div>
+<div class="app-container">
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <button class="burger-btn" onclick="toggleMenu()"><i data-lucide="menu"></i></button>
+            <div style="flex: 1; display: flex; align-items: center; gap: 10px; background: #080808; padding: 8px 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); cursor: pointer;" onclick="location.href='search.html'">
+                <i data-lucide="search" size="16" style="opacity: 0.3;"></i>
+                <span style="font-size: 14px; opacity:0.4;">Поиск...</span>
+            </div>
+        </div>
+        <div id="chatList"></div>
+    </aside>
 
-    <nav class="drawer" id="drawer">
-        <div class="drawer-content">
-            <div class="drawer-header"><i data-lucide="zap" style="fill: var(--accent)"></i> Mewnly</div>
-            <button class="nav-link" onclick="location.href='index.html'"><i data-lucide="message-square"></i> Сообщения</button>
-            <button class="nav-link" onclick="location.href='profile.html'"><i data-lucide="user"></i> Профиль</button>
-            <button class="nav-link" onclick="location.href='friends.html'"><i data-lucide="users"></i> Друзья</button>
-            <button class="nav-link" onclick="location.href='saved.html'"><i data-lucide="bookmark"></i> Сохраненное</button>
-            <button class="nav-link" onclick="location.href='settings.html'"><i data-lucide="settings"></i> Настройки</button>
-            <button class="nav-link" onclick="location.href='updates.html'"><i data-lucide="refresh-cw"></i> Что нового?</button>
+    <main class="main-panel">
+        <div id="empty-view">
+            <img src="../img/logo.png" class="welcome-logo" alt="Logo">
+            <h1 class="welcome-title">Mewnly</h1>
+            <div class="clock" id="clock">00:00:00</div>
+        </div>
+        <iframe id="chat-frame"></iframe>
+    </main>
+</div>
+
+<script>
+    const myNick = localStorage.getItem('mewnly_user');
+    let pinnedChats = JSON.parse(localStorage.getItem('pinned_chats') || '[]');
+    let currentCtxUser = null;
+
+    const quotes = [
+        "<< Фембои уже в пути! >>",
+        "<< Мы вовсе не пользовались Gemini >>",
+        "<< Лого рисовала моя бедная девушка >>",
+        "<< Мы не знаем на каких соплях тут все работает >>",
+        "<< Рисуем круг фембойским членом >>",
+        "<< Собираем пакеты с котиками... >>",
+    ];
+
+    function toggleMenu() {
+        document.getElementById('drawer').classList.toggle('open');
+        document.getElementById('overlay').classList.toggle('active');
+    }
+
+    // Часы
+    setInterval(() => { 
+        const el = document.getElementById('clock');
+        if(el) el.innerText = new Date().toLocaleTimeString(); 
+    }, 1000);
+
+    async function renderChats() {
+        const list = document.getElementById('chatList');
+        list.innerHTML = '';
+        let recent = JSON.parse(localStorage.getItem('recent_chats') || '[]');
+        
+        recent.sort((a, b) => pinnedChats.includes(b) - pinnedChats.includes(a));
+
+        for (const nick of recent) {
+            const profile = await window.loadProfile(nick);
+            const isPinned = pinnedChats.includes(nick);
             
-            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.05);">
-                <button class="nav-link" onclick="logout()" style="color: #ff5e5e;"><i data-lucide="log-out"></i> Выход</button>
-            </div>
-        </div>
-        <div class="drawer-footer">
-            <div class="chat-item" style="padding:0; margin:0;" onclick="location.href='profile.html'">
-                <div class="p-avatar" id="footer-avatar" style="width:40px; height:40px; border-radius:10px;">?</div>
-                <div style="overflow:hidden;"><div id="footer-name" style="color:white; font-weight:600; font-size:14px;">...</div><div id="footer-nick" style="color:var(--accent); font-size:11px;">@user</div></div>
-            </div>
-        </div>
-    </nav>
-
-    <div class="app-container">
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <button class="burger-btn" onclick="toggleMenu()"><i data-lucide="menu"></i></button>
-                <div class="search-box" onclick="location.href='search.html'">
-                    <i data-lucide="search" size="16" style="opacity: 0.3;"></i>
-                    <span style="font-size: 14px; opacity:0.5;">Поиск</span>
-                </div>
-            </div>
-            <div id="chatList"></div>
-        </aside>
-
-        <main class="main-panel" id="main-panel">
-            <div id="empty-view">
-                <h1 class="welcome-title">Mewnly</h1>
-                <div class="clock" id="clock">00:00:00</div>
-            </div>
-
-            <div id="chat-window">
-                <header class="chat-header" onclick="showUserProfile(currentPartner)">
-                    <div class="p-avatar" id="active-avatar" style="width:40px; height:40px; border-radius:12px;">?</div>
-                    <div>
-                        <div id="active-name" style="color:white; font-weight:700; font-size:16px;">Чат</div>
-                        <div id="active-status" style="font-size:12px;"><span id="active-dot" class="status-dot"></span><span id="active-status-text">offline</span></div>
+            const item = document.createElement('div');
+            item.className = `chat-item ${isPinned ? 'pinned' : ''}`;
+            item.innerHTML = `
+                <div class="p-avatar">${profile?.avatar ? `<img src="${profile.avatar}">` : nick[0].toUpperCase()}</div>
+                <div class="chat-info">
+                    <div class="chat-top">
+                        <span class="chat-name">${profile?.realName || nick}</span>
+                        <span class="msg-date" id="date-${nick}">--:--</span>
                     </div>
-                </header>
-                <div class="messages-container" id="messages"></div>
-                <form class="input-area" id="chatForm">
-                    <textarea id="msgInput" placeholder="Ваше сообщение..." rows="1"></textarea>
-                    <button type="submit" style="background:var(--accent); border:none; color:white; border-radius:10px; padding:10px 15px; cursor:pointer;"><i data-lucide="send" size="18"></i></button>
-                </form>
-            </div>
-        </main>
-    </div>
+                    <div class="last-msg" id="last-${nick}">Загрузка...</div>
+                </div>
+            `;
 
-    <script>
-        lucide.createIcons();
-        const myNick = localStorage.getItem('mewnly_user');
-        let currentPartner = null, unsubscribe = null, editingId = null;
-
-        function toggleMenu() {
-            document.getElementById('drawer').classList.toggle('open');
-            document.getElementById('overlay').classList.toggle('active');
-        }
-
-        setInterval(() => { document.getElementById('clock').innerText = new Date().toLocaleTimeString(); }, 1000);
-
-        // MARKDOWN
-        function parseMd(t) {
-            if(!t) return "";
-            return t.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
-                    .replace(/\/\/(.*?)\/\//g, '<i>$1</i>')
-                    .replace(/__(.*?)__/g, '<s>$1</s>')
-                    .replace(/```(.*?)```/gs, '<div class="code-block"><div class="code-header"><button class="copy-btn" onclick="copyC(this)">Copy</button></div><div class="code-content"><pre style="margin:0;">$1</pre></div></div>');
-        }
-        window.copyC = (b) => { navigator.clipboard.writeText(b.parentElement.nextElementSibling.innerText); b.innerText='Copied!'; setTimeout(()=>b.innerText='Copy', 1500); };
-
-        // SHIFT + ENTER & AUTOHEIGHT
-        const tArea = document.getElementById('msgInput');
-        tArea.addEventListener('input', function() {
-            this.style.height = 'auto'; this.style.height = (this.scrollHeight) + 'px';
-        });
-        tArea.addEventListener('keydown', (e) => {
-            if(e.key === 'Enter' && !e.shiftKey) { 
-                e.preventDefault(); 
-                document.getElementById('chatForm').dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
-            }
-        });
-
-        async function openChat(nick) {
-            currentPartner = nick;
-            document.getElementById('empty-view').style.display = 'none';
-            document.getElementById('chat-window').style.display = 'flex';
+            item.onclick = () => {
+                document.querySelectorAll('.chat-item').forEach(i => i.classList.remove('active'));
+                item.classList.add('active');
+                document.getElementById('empty-view').style.display = 'none';
+                const frame = document.getElementById('chat-frame');
+                frame.style.display = 'block';
+                frame.src = `messenger.html?user=${nick}`;
+            };
             
-            const p = await window.loadFirebaseProfile(nick);
-            document.getElementById('active-name').innerText = p?.realName || nick;
-            document.getElementById('active-avatar').innerHTML = p?.avatar ? `<img src="${p.avatar}">` : nick[0].toUpperCase();
-            
-            const isOnline = p?.status === 'online';
-            document.getElementById('active-dot').className = 'status-dot ' + (isOnline ? 'online' : '');
-            document.getElementById('active-status-text').className = isOnline ? 'online-text' : '';
-            document.getElementById('active-status-text').innerText = isOnline ? 'online' : 'offline';
+            item.oncontextmenu = (e) => {
+                e.preventDefault();
+                currentCtxUser = nick;
+                const menu = document.getElementById('context-menu');
+                menu.style.display = 'block';
+                menu.style.left = e.pageX + 'px';
+                menu.style.top = e.pageY + 'px';
+                document.getElementById('menu-pin').innerHTML = `<i data-lucide="pin" size="16"></i> ${isPinned ? 'Открепить' : 'Закрепить'}`;
+                lucide.createIcons();
+            };
 
-            if (unsubscribe) unsubscribe();
-            const q = window.fb.query(window.fb.collection(window.fb.db, "messages"),
-                window.fb.or(
-                    window.fb.and(window.fb.where("from", "==", myNick), window.fb.where("to", "==", nick)),
-                    window.fb.and(window.fb.where("from", "==", nick), window.fb.where("to", "==", myNick))
-                ), window.fb.orderBy("createdAt", "asc")
-            );
+            list.appendChild(item);
 
-            unsubscribe = window.fb.onSnapshot(q, (snap) => {
-                const box = document.getElementById('messages'); box.innerHTML = '';
-                snap.forEach(d => {
-                    const data = d.data(); const isMe = data.from === myNick;
-                    const time = data.createdAt ? data.createdAt.toDate().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '..';
-                    const div = document.createElement('div');
-                    div.className = `msg ${isMe ? 'sent' : 'received'}`;
-                    div.innerHTML = `<div>${parseMd(data.text)}</div><span class="msg-time">${time}</span>`;
-                    div.oncontextmenu = (e) => showCtx(e, d.id, data.text, isMe);
-                    box.appendChild(div);
-                });
-                box.scrollTop = box.scrollHeight;
+            window.watchLastMsg(myNick, nick, (data) => {
+                const textEl = document.getElementById(`last-${nick}`);
+                const dateEl = document.getElementById(`date-${nick}`);
+                if (textEl) textEl.innerText = data.from === myNick ? `Вы: ${data.text}` : data.text;
+                if (dateEl && data.createdAt) {
+                    const d = data.createdAt.toDate();
+                    dateEl.innerText = d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                }
             });
         }
+        lucide.createIcons();
+    }
 
-        document.getElementById('chatForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const val = tArea.value.trim(); if(!val) return;
-            if(editingId) {
-                await window.fb.updateDoc(window.fb.doc(window.fb.db, "messages", editingId), { text: val });
-                editingId = null;
-            } else {
-                await window.fb.addDoc(window.fb.collection(window.fb.db, "messages"), {
-                    from: myNick, to: currentPartner, text: val, createdAt: window.fb.serverTimestamp()
-                });
-            }
-            tArea.value = ''; tArea.style.height = 'auto';
-        });
+    // ПКМ действия
+    document.getElementById('menu-pin').onclick = () => {
+        if (pinnedChats.includes(currentCtxUser)) pinnedChats = pinnedChats.filter(n => n !== currentCtxUser);
+        else pinnedChats.push(currentCtxUser);
+        localStorage.setItem('pinned_chats', JSON.stringify(pinnedChats));
+        renderChats();
+    };
 
-        function showCtx(e, id, text, isMe) {
-            e.preventDefault();
-            const m = document.getElementById('context-menu');
-            m.style.display = 'block';
-            let x = e.pageX, y = e.pageY;
-            if(x + 180 > window.innerWidth) x -= 180;
-            if(y + 150 > window.innerHeight) y -= 150;
-            m.style.left = x + 'px'; m.style.top = y + 'px';
+    document.getElementById('menu-delete').onclick = () => {
+        let recent = JSON.parse(localStorage.getItem('recent_chats') || '[]');
+        localStorage.setItem('recent_chats', JSON.stringify(recent.filter(n => n !== currentCtxUser)));
+        renderChats();
+    };
 
-            document.getElementById('menu-edit').style.display = isMe ? 'flex' : 'none';
-            document.getElementById('menu-delete').style.display = isMe ? 'flex' : 'none';
-            document.getElementById('menu-copy').onclick = () => { navigator.clipboard.writeText(text); m.style.display='none'; };
-            document.getElementById('menu-reply').onclick = () => { tArea.value = `> ${text}\n`; m.style.display='none'; tArea.focus(); tArea.dispatchEvent(new Event('input')); };
-            document.getElementById('menu-delete').onclick = async () => { if(confirm("Удалить?")) await window.fb.deleteDoc(window.fb.doc(window.fb.db, "messages", id)); m.style.display='none'; };
-            document.getElementById('menu-edit').onclick = () => { editingId = id; tArea.value = text; m.style.display='none'; tArea.focus(); tArea.dispatchEvent(new Event('input')); };
-        }
+    document.addEventListener('click', () => { document.getElementById('context-menu').style.display = 'none'; });
 
-        async function showUserProfile(nick) {
-            const p = await window.loadFirebaseProfile(nick); if(!p) return;
-            document.getElementById('m-name').innerText = p.realName || nick;
-            document.getElementById('m-nick').innerText = "@" + p.username;
-            document.getElementById('m-bio').innerText = p.bio || "Описание отсутствует.";
-            document.getElementById('m-av').innerHTML = p.avatar ? `<img src="${p.avatar}">` : nick[0].toUpperCase();
-            
-            const isOnline = p.status === 'online';
-            document.getElementById('m-id').innerText = p.uid || "MW-0000";
-            document.getElementById('m-reg-date').innerText = p.regDate || "2024-03-12";
-
-            document.getElementById('pModal').classList.add('active'); lucide.createIcons();
-        }
-
-        document.addEventListener('click', () => document.getElementById('context-menu').style.display='none');
-
-        async function init() {
-            const me = await window.loadFirebaseProfile(myNick);
+    // ИНИЦИАЛИЗАЦИЯ
+    async function init() {
+        // Устанавливаем случайную цитату
+        document.getElementById('loaderQuote').innerText = quotes[Math.floor(Math.random() * quotes.length)];
+        
+        try {
+            const me = await window.loadProfile(myNick);
             if (me) {
                 document.getElementById('footer-name').innerText = me.realName || myNick;
                 document.getElementById('footer-nick').innerText = "@" + me.username;
                 if (me.avatar) document.getElementById('footer-avatar').innerHTML = `<img src="${me.avatar}">`;
             }
-            const recent = JSON.parse(localStorage.getItem('recent_chats') || '[]');
-            const list = document.getElementById('chatList');
-            for (const nick of recent) {
-                const p = await window.loadFirebaseProfile(nick);
-                const item = document.createElement('div');
-                item.className = 'chat-item';
-                item.innerHTML = `<div class="p-avatar" style="width:40px; height:40px; border-radius:10px;">${p?.avatar ? `<img src="${p.avatar}">` : nick[0].toUpperCase()}</div>
-                                  <div style="overflow:hidden;"><div style="color:white; font-weight:600; font-size:15px;">${p?.realName || nick}</div><div style="font-size:11px; color:${p?.status==='online'?'#a855f7':'var(--accent)'};">@${nick}</div></div>`;
-                item.onclick = () => openChat(nick);
-                list.appendChild(item);
-            }
+            await renderChats();
+            
+            // Плавное скрытие лоадера
+            setTimeout(() => {
+                const loader = document.getElementById('preloader');
+                loader.classList.add('loader-hidden');
+            }, 1000); // Задержка 1 сек, чтобы цитату успели прочитать
+
+        } catch (e) {
+            console.error("Load failed", e);
+            document.getElementById('preloader').classList.add('loader-hidden');
         }
-        window.onload = init;
-        async function logout() { await window.firebaseLogout(); localStorage.clear(); location.href='../index.html'; }
-    </script>
+    }
+
+    function logout() { localStorage.clear(); location.href='../index.html'; }
+
+    window.onload = init;
+</script>
 </body>
 </html>

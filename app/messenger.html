@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mewnly Messenger Pro</title>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0f0f0f;
+            --accent: #7F49B4;
+            --accent-soft: rgba(127, 73, 180, 0.2);
+            --border: rgba(127, 73, 180, 0.2);
+            --card: #161616;
+            --text: #e0e0e0;
+            --text-dim: #808080;
+        }
+
+        body {
+            margin: 0; background: var(--bg); font-family: 'Inter', sans-serif;
+            color: var(--text); height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+        }
+
+        /* --- КАСТОМНЫЙ СКРОЛЛБАР --- */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg); }
+        ::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #965fd4; }
+
+        /* --- HEADER --- */
+        .header {
+            padding: 12px 20px; background: var(--card);
+            border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .user-info { display: flex; align-items: center; gap: 12px; cursor: pointer; padding: 5px 10px; border-radius: 12px; transition: 0.2s; }
+        .user-info:hover { background: var(--accent-soft); }
+        .u-avatar { width: 40px; height: 40px; background: var(--accent); border-radius: 12px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .u-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+        .search-bar {
+            display: none; position: absolute; left: 50%; transform: translateX(-50%);
+            background: #0a0a0a; border: 1px solid var(--border); border-radius: 10px;
+            padding: 5px 15px; width: 250px; color: white; outline: none;
+        }
+
+        /* --- ДАТА В ЦЕНТРЕ --- */
+        .date-divider {
+            display: flex; align-items: center; justify-content: center;
+            margin: 20px 0; color: var(--accent); font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px;
+        }
+        .date-divider::before, .date-divider::after {
+            content: ""; flex: 1; height: 1px; background: var(--border); margin: 0 15px;
+        }
+
+        /* --- СООБЩЕНИЯ --- */
+        #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 6px; }
+        
+        .msg-wrapper { display: flex; flex-direction: column; max-width: 80%; }
+        .sent { align-self: flex-end; align-items: flex-end; }
+        .received { align-self: flex-start; align-items: flex-start; }
+
+        .msg {
+            padding: 10px 14px; border-radius: 18px; font-size: 15px; position: relative;
+        }
+        .sent .msg { background: var(--accent); border-bottom-right-radius: 4px; }
+        .received .msg { background: #222; border-bottom-left-radius: 4px; }
+
+        .msg-status { font-size: 10px; display: flex; align-items: center; gap: 4px; margin-top: 4px; opacity: 0.7; }
+        .status-icon { display: flex; align-items: center; }
+
+        /* Файлы в чате */
+        .file-attachment {
+            display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.2);
+            padding: 8px; border-radius: 10px; cursor: pointer; text-decoration: none; color: white;
+        }
+
+        /* --- MODAL PROFILE --- */
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(10px);
+            display: none; justify-content: center; align-items: center; z-index: 1000;
+        }
+        .profile-card {
+            background: var(--card); border: 1px solid var(--border); width: 320px;
+            border-radius: 28px; padding: 30px; text-align: center; position: relative;
+        }
+        .p-big-avatar { width: 100px; height: 100px; border-radius: 30px; margin: 0 auto 15px; background: var(--accent); overflow: hidden; }
+        .p-big-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .p-bio { font-size: 14px; color: var(--text-dim); margin: 15px 0; line-height: 1.4; }
+        .p-meta { font-size: 11px; color: var(--accent); opacity: 0.8; margin-bottom: 20px; }
+        .p-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .p-btn { padding: 10px; border-radius: 12px; border: 1px solid var(--border); background: none; color: white; cursor: pointer; font-size: 13px; font-weight: 600; }
+        .p-btn.add { background: var(--accent); border: none; }
+
+        /* --- INPUT --- */
+        .input-box { padding: 15px 20px; background: var(--card); border-top: 1px solid var(--border); display: flex; align-items: center; gap: 12px; }
+        .attach-btn { color: var(--text-dim); cursor: pointer; transition: 0.2s; }
+        .attach-btn:hover { color: var(--accent); }
+        #fileInput { display: none; }
+
+        #msgInput { flex: 1; background: #0a0a0a; border: 1px solid var(--border); border-radius: 14px; padding: 12px; color: white; outline: none; }
+    </style>
+</head>
+<body>
+
+<div class="modal-overlay" id="profileModal" onclick="this.style.display='none'">
+    <div class="profile-card" onclick="event.stopPropagation()">
+        <div class="p-big-avatar" id="p-avatar">?</div>
+        <h2 id="p-name" style="margin:0;">...</h2>
+        <div id="p-nick" style="color:var(--accent); font-weight:700;">@username</div>
+        <p class="p-bio" id="p-bio">Пользователь еще не придумал описание своего невероятного профиля.</p>
+        <div class="p-meta">РЕГИСТРАЦИЯ: <span id="p-date">01.01.1970</span></div>
+        <div class="p-actions">
+            <button class="p-btn add">В друзья</button>
+            <button class="p-btn" style="color:#ff5e5e;">В блок</button>
+        </div>
+    </div>
+</div>
+
+<div class="header">
+    <div class="user-info" onclick="openProfile()">
+        <div class="u-avatar" id="h-avatar">?</div>
+        <div>
+            <div id="h-name" style="font-weight:700;">...</div>
+            <div style="font-size:10px; color:var(--accent); font-weight:800; text-transform:uppercase;">online</div>
+        </div>
+    </div>
+    
+    <input type="text" class="search-bar" id="searchInp" placeholder="Поиск в переписке..." oninput="filterMessages()">
+    
+    <div style="display:flex; gap:10px;">
+        <button class="p-btn" style="padding:5px 10px;" onclick="toggleSearch()"><i data-lucide="search" size="18"></i></button>
+    </div>
+</div>
+
+<div id="messages"></div>
+
+<div class="input-box">
+    <label class="attach-btn" for="fileInput"><i data-lucide="paperclip" size="22"></i></label>
+    <input type="file" id="fileInput" onchange="sendFile(this)">
+    
+    <input type="text" id="msgInput" placeholder="Введите сообщение...">
+    <button class="p-btn add" id="sendBtn" style="padding:10px 20px;"><i data-lucide="send" size="18"></i></button>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, query, where, orderBy, onSnapshot, serverTimestamp, doc, updateDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyB3YsqmPng3BdsgbZXs-Ok1c5Z4e1HZhkY",
+        authDomain: "mewnly.firebaseapp.com",
+        projectId: "mewnly",
+        storageBucket: "mewnly.firebasestorage.app",
+        messagingSenderId: "854522459869",
+        appId: "1:854522459869:web:edc0df5aad55ca1f4e8d34"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const params = new URLSearchParams(window.location.search);
+    const partnerNick = params.get('user');
+    const myNick = localStorage.getItem('mewnly_user');
+    let partnerData = null;
+
+    // --- ЛОГИКА ПРОФИЛЯ ---
+    window.openProfile = async () => {
+        const q = query(collection(db, "users"), where("username", "==", partnerNick));
+        const snap = await getDocs(q);
+        if(!snap.empty) {
+            const d = snap.docs[0].data();
+            document.getElementById('p-name').innerText = d.realName || partnerNick;
+            document.getElementById('p-nick').innerText = "@" + d.username;
+            document.getElementById('p-bio').innerText = d.bio || "О себе ничего не известно...";
+            document.getElementById('p-date').innerText = d.createdAt ? new Date(d.createdAt).toLocaleDateString() : 'Давно';
+            if(d.avatar) document.getElementById('p-avatar').innerHTML = `<img src="${d.avatar}">`;
+            document.getElementById('profileModal').style.display = 'flex';
+        }
+    };
+
+    // --- ОТПРАВКА ФАЙЛА ---
+    window.sendFile = (input) => {
+        const file = input.files[0];
+        if(!file) return;
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            await addDoc(collection(db, "messages"), {
+                from: myNick, to: partnerNick,
+                fileData: e.target.result,
+                fileName: file.name,
+                type: 'file',
+                isRead: false,
+                createdAt: serverTimestamp()
+            });
+        };
+        reader.readAsDataURL(file);
+    };
+
+    // --- ПОИСК ---
+    window.toggleSearch = () => {
+        const s = document.getElementById('searchInp');
+        s.style.display = s.style.display === 'block' ? 'none' : 'block';
+        if(s.style.display === 'block') s.focus();
+    };
+
+    window.filterMessages = () => {
+        const val = document.getElementById('searchInp').value.toLowerCase();
+        document.querySelectorAll('.msg-wrapper').forEach(el => {
+            const text = el.innerText.toLowerCase();
+            el.style.display = text.includes(val) ? 'flex' : 'none';
+        });
+    };
+
+    // --- ЧТЕНИЕ И СТАТУСЫ ---
+    function listenMessages() {
+        const q = query(collection(db, "messages"), 
+            where("from", "in", [myNick, partnerNick]),
+            where("to", "in", [myNick, partnerNick]),
+            orderBy("createdAt", "asc")
+        );
+
+        let lastDate = "";
+
+        onSnapshot(q, (snap) => {
+            const container = document.getElementById('messages');
+            container.innerHTML = '';
+            snap.forEach(docSnap => {
+                const m = docSnap.data();
+                const isMe = m.from === myNick;
+
+                // Отмечаем как прочитанное, если сообщение пришло мне
+                if(!isMe && !m.isRead) {
+                    updateDoc(doc(db, "messages", docSnap.id), { isRead: true });
+                }
+
+                // Разделитель дат
+                const msgDate = m.createdAt ? m.createdAt.toDate().toLocaleDateString('ru-RU', {day:'numeric', month:'long'}) : "";
+                if(msgDate !== lastDate) {
+                    const divDate = document.createElement('div');
+                    divDate.className = 'date-divider';
+                    divDate.innerText = msgDate;
+                    container.appendChild(divDate);
+                    lastDate = msgDate;
+                }
+
+                const wrap = document.createElement('div');
+                wrap.className = `msg-wrapper ${isMe ? 'sent' : 'received'}`;
+                
+                let content = m.text || '';
+                if(m.type === 'file') {
+                    content = `<a href="${m.fileData}" download="${m.fileName}" class="file-attachment">
+                        <i data-lucide="file"></i> <span>${m.fileName}</span>
+                    </a>`;
+                }
+
+                const statusIcon = isMe ? (m.isRead ? '<i data-lucide="check-check" size="14" style="color:#00ff88"></i>' : '<i data-lucide="check" size="14"></i>') : '';
+
+                wrap.innerHTML = `
+                    <div class="msg">${content}</div>
+                    <div class="msg-status">
+                        ${m.createdAt ? m.createdAt.toDate().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : ''}
+                        <span class="status-icon">${statusIcon}</span>
+                    </div>
+                `;
+                container.appendChild(wrap);
+            });
+            container.scrollTop = container.scrollHeight;
+            lucide.createIcons();
+        });
+    }
+
+    // Инит заголовка
+    async function initHeader() {
+        const q = query(collection(db, "users"), where("username", "==", partnerNick));
+        const snap = await getDocs(q);
+        if(!snap.empty) {
+            const d = snap.docs[0].data();
+            document.getElementById('h-name').innerText = d.realName || partnerNick;
+            if(d.avatar) document.getElementById('h-avatar').innerHTML = `<img src="${d.avatar}">`;
+        }
+    }
+
+    document.getElementById('sendBtn').onclick = async () => {
+        const text = document.getElementById('msgInput').value.trim();
+        if(!text) return;
+        await addDoc(collection(db, "messages"), {
+            from: myNick, to: partnerNick, text, isRead: false, createdAt: serverTimestamp()
+        });
+        document.getElementById('msgInput').value = '';
+    };
+
+    initHeader();
+    listenMessages();
+    lucide.createIcons();
+</script>
+</body>
+</html>

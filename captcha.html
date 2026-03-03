@@ -12,15 +12,19 @@
             --accent: #7F49B4;
             --text: #CFCFCF;
             --border: rgba(127, 73, 180, 0.2);
+            --success: #22c55e;
+            --error: #ef4444;
         }
 
         body {
             margin: 0; background: var(--bg); color: var(--text);
             font-family: 'Inter', sans-serif;
             display: flex; justify-content: center; align-items: center; min-height: 100vh;
+            overflow: hidden;
         }
 
         .captcha-box {
+            display: none; 
             background: var(--card);
             padding: 25px;
             border-radius: 24px;
@@ -28,6 +32,7 @@
             width: 100%;
             max-width: 350px;
             text-align: center;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
         }
 
         .header {
@@ -57,10 +62,11 @@
             overflow: hidden;
             transition: 0.2s;
             position: relative;
+            border: 4px solid transparent;
         }
 
         .cell:hover { opacity: 0.8; transform: scale(0.98); }
-        .cell img { width: 100%; height: 100%; object-fit: cover; }
+        .cell img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
 
         .footer {
             display: flex;
@@ -78,19 +84,88 @@
             border-radius: 8px;
             font-weight: 600;
             cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .btn-verify:hover { filter: brightness(1.2); }
+
+        /* --- СТИЛЬ МОДАЛЬНОГО ОКНА --- */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+
+        .modal-overlay.active { display: flex; }
+
+        .result-card {
+            background: #121212;
+            border: 1px solid var(--border);
+            padding: 30px;
+            border-radius: 28px;
+            width: 280px;
+            text-align: center;
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes popIn {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .result-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 15px;
+        }
+
+        .icon-success { background: rgba(34, 197, 94, 0.15); color: var(--success); }
+        .icon-error { background: rgba(239, 68, 68, 0.15); color: var(--error); }
+
+        .result-title { font-size: 20px; font-weight: 800; color: white; margin-bottom: 8px; }
+        .result-text { font-size: 14px; opacity: 0.6; margin-bottom: 20px; line-height: 1.4; }
+
+        .btn-ok {
+            width: 100%;
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 12px;
+            font-weight: 700;
+            cursor: pointer;
         }
     </style>
 </head>
 <body>
 
-<div class="captcha-box">
+<div class="modal-overlay" id="modalOverlay">
+    <div class="result-card">
+        <div id="modalIconBox" class="result-icon">
+            <i id="modalIcon" data-lucide="check-circle-2" size="32"></i>
+        </div>
+        <div class="result-title" id="modalTitle">Успех!</div>
+        <div class="result-text" id="modalText">Вы подтвердили, что вы человек.</div>
+        <button class="btn-ok" onclick="closeModal()">ОК</button>
+    </div>
+</div>
+
+<div class="captcha-box" id="captchaBox">
     <div class="header">
         <p>Выберите все квадраты, где есть</p>
         <h2 id="target-name">Фембой</h2>
     </div>
 
-    <div class="grid" id="grid">
-        </div>
+    <div class="grid" id="grid"></div>
 
     <div class="footer">
         <i data-lucide="refresh-cw" style="cursor:pointer; opacity:0.5" onclick="generateGrid()"></i>
@@ -99,9 +174,13 @@
 </div>
 
 <script>
-    lucide.createIcons();
+    if (localStorage.getItem('mewnly_verified') === 'true') {
+        window.location.href = "app/dash.html";
+    } else {
+        document.getElementById('captchaBox').style.display = 'block';
+        lucide.createIcons();
+    }
 
-    // Сюда вставь ссылки на картинки (5 обычных, 4 фембоя например)
     const images = {
         femboy: [
             "https://i.pinimg.com/736x/94/6a/26/946a26b67c40828182577ab68462bf54.jpg",
@@ -120,51 +199,86 @@
 
     let selectedCells = new Set();
     let correctCells = new Set();
+    let isSuccess = false;
 
     function generateGrid() {
         const grid = document.getElementById('grid');
         grid.innerHTML = '';
         selectedCells.clear();
         correctCells.clear();
-
-        // Создаем массив из 9 элементов (4 правильных, 5 неправильных)
         let pool = [];
         images.femboy.forEach(url => pool.push({ url, isTarget: true }));
         images.other.forEach(url => pool.push({ url, isTarget: false }));
-        
-        // Перемешиваем
         pool.sort(() => Math.random() - 0.5);
-
         pool.forEach((item, index) => {
             const cell = document.createElement('div');
             cell.className = 'cell';
             cell.innerHTML = `<img src="${item.url}">`;
             cell.onclick = () => {
-                cell.style.border = selectedCells.has(index) ? 'none' : '4px solid var(--accent)';
-                cell.style.padding = selectedCells.has(index) ? '0' : '4px';
-                if (selectedCells.has(index)) selectedCells.delete(index);
-                else selectedCells.add(index);
+                if (selectedCells.has(index)) {
+                    selectedCells.delete(index);
+                    cell.style.borderColor = 'transparent';
+                    cell.style.padding = '0';
+                } else {
+                    selectedCells.add(index);
+                    cell.style.borderColor = 'var(--accent)';
+                    cell.style.padding = '4px';
+                }
             };
             if (item.isTarget) correctCells.add(index);
             grid.appendChild(cell);
         });
     }
 
-    function checkCaptcha() {
-        // Проверяем: выбраны ли все правильные и не выбраны ли неправильные
-        const isCorrect = correctCells.size === selectedCells.size && 
-                          [...correctCells].every(value => selectedCells.has(value));
+    function showModal(status) {
+        const overlay = document.getElementById('modalOverlay');
+        const iconBox = document.getElementById('modalIconBox');
+        const icon = document.getElementById('modalIcon');
+        const title = document.getElementById('modalTitle');
+        const text = document.getElementById('modalText');
 
-        if (isCorrect) {
-            alert("Проверка пройдена!");
-            window.location.href = "app/dash.html"; // Твоя страница входа
+        if (status === 'success') {
+            isSuccess = true;
+            iconBox.className = 'result-icon icon-success';
+            icon.setAttribute('data-lucide', 'check-circle-2');
+            title.innerText = 'Проверка пройдена';
+            text.innerText = 'Добро пожаловать обратно в Mewnly.';
         } else {
-            alert("Ошибка! Попробуйте еще раз.");
+            isSuccess = false;
+            iconBox.className = 'result-icon icon-error';
+            icon.setAttribute('data-lucide', 'x-circle');
+            title.innerText = 'Ошибка';
+            text.innerText = 'Похоже, вы ошиблись. Попробуйте выбрать картинки снова.';
+        }
+        
+        overlay.classList.add('active');
+        lucide.createIcons();
+    }
+
+    function closeModal() {
+        document.getElementById('modalOverlay').classList.remove('active');
+        if (isSuccess) {
+            window.location.href = "app/dash.html";
+        } else {
             generateGrid();
         }
     }
 
-    generateGrid();
+    function checkCaptcha() {
+        const result = correctCells.size === selectedCells.size && 
+                          [...correctCells].every(value => selectedCells.has(value));
+
+        if (result) {
+            localStorage.setItem('mewnly_verified', 'true');
+            showModal('success');
+        } else {
+            showModal('error');
+        }
+    }
+
+    if (localStorage.getItem('mewnly_verified') !== 'true') {
+        generateGrid();
+    }
 </script>
 
 </body>

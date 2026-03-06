@@ -4,7 +4,7 @@ let isLogin = true;
 
     // Авто-вход
     if (localStorage.getItem('mewnly_user')) {
-        window.location.href = 'captcha.html';
+        window.location.href = 'html/captcha.html';
     } else {
         document.getElementById('main-container').style.display = 'block';
         lucide.createIcons();
@@ -57,7 +57,7 @@ let isLogin = true;
     function closeModal() {
         document.getElementById('modalOverlay').classList.remove('active');
         if (redirectOnClose) {
-            window.location.href = 'captcha.html';
+            window.location.href = 'html/captcha.html';
         }
     }
 

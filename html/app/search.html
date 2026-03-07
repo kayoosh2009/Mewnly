@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mewnly — Поиск в сети</title>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <link rel="stylesheet" href="../../css/search.css"> 
+</head>
+<body>
+
+    <div class="search-container">
+        <div class="header">
+            <button class="back-btn" onclick="location.href='dash.html'"><i data-lucide="arrow-left"></i></button>
+            <h1 style="color:white; font-size: 24px; margin:0;">Network Search</h1>
+        </div>
+
+        <div class="search-bar-wrapper">
+            <i data-lucide="search" size="20"></i>
+            <input type="text" id="searchInput" placeholder="Имя, @никнейм или ID..." oninput="doSearch()">
+            <div class="qr-trigger" onclick="toggleScanner()"><i data-lucide="qr-code"></i></div>
+        </div>
+
+        <div id="reader"></div>
+
+        <div class="results-list" id="results">
+            <div style="text-align: center; margin-top: 50px; opacity: 0.3;">
+                <i data-lucide="users" size="48" style="margin-bottom: 10px;"></i>
+                <p>Введите данные для поиска в базе Mewnly</p>
+            </div>
+        </div>
+    </div>
+
+    <script src = "../../js/search.js"></script>
+    <script type="module" src = "../../js/search_module.js"></script>
+</body>
+</html>

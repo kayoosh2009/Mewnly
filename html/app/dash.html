@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mewnly — Dashboard</title>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, query, where, getDocs, orderBy, limit, onSnapshot, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getAuth, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyB3YsqmPng3BdsgbZXs-Ok1c5Z4e1HZhkY",
+            authDomain: "mewnly.firebaseapp.com",
+            projectId: "mewnly",
+            storageBucket: "mewnly.firebasestorage.app",
+            messagingSenderId: "854522459869",
+            appId: "1:854522459869:web:edc0df5aad55ca1f4e8d34"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        window.loadProfile = async (nick) => {
+            const q = query(collection(db, "users"), where("username", "==", nick.toLowerCase()));
+            const snap = await getDocs(q);
+            return !snap.empty ? snap.docs[0].data() : null;
+        };
+
+        window.watchLastMsg = (myNick, partnerNick, callback) => {
+            const q = query(collection(db, "messages"), 
+                where("from", "in", [myNick, partnerNick]),
+                where("to", "in", [myNick, partnerNick]),
+                orderBy("createdAt", "desc"), limit(1)
+            );
+            return onSnapshot(q, (snap) => { if (!snap.empty) callback(snap.docs[0].data()); });
+        };
+    </script>
+    
+    <style>
+        :root {
+            --bg-deep: #0f0f0f;
+            --bg-card: #161616;
+            --accent: #7F49B4;
+            --text-gray: #a0a0a0;
+            --white: #ffffff;
+            --border: rgba(127, 73, 180, 0.15);
+        }
+
+        body, html { margin: 0; padding: 0; height: 100%; background: var(--bg-deep); color: var(--white); font-family: 'Inter', sans-serif; overflow: hidden; }
+
+        /* --- ПРЕЛОАДЕР --- */
+        #preloader {
+            position: fixed;
+            inset: 0;
+            background: #080808;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.6s;
+        }
+
+        .loader-content { text-align: center; }
+
+        .loader-logo {
+            width: 90px;
+            height: 90px;
+            margin-bottom: 25px;
+            animation: loaderRotate 2s infinite ease-in-out;
+            filter: drop-shadow(0 0 15px rgba(127, 73, 180, 0.4));
+        }
+
+        @keyframes loaderRotate {
+            0% { transform: scale(0.9) rotate(0deg); opacity: 0.6; }
+            50% { transform: scale(1.1) rotate(180deg); opacity: 1; }
+            100% { transform: scale(0.9) rotate(360deg); opacity: 0.6; }
+        }
+
+        .loader-quote {
+            font-size: 13px;
+            color: var(--accent);
+            font-weight: 600;
+            letter-spacing: 1px;
+            max-width: 300px;
+            height: 20px;
+            opacity: 0.8;
+        }
+
+        .loader-hidden { opacity: 0; visibility: hidden; }
+
+        /* --- ОСНОВНОЙ ИНТЕРФЕЙС --- */
+        .app-container { display: flex; width: 100%; height: 100vh; }
+
+        .sidebar { width: 350px; min-width: 350px; background: var(--bg-card); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+        .sidebar-header { padding: 15px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; }
+        
+        .logo-img { width: 32px; height: 32px; object-fit: contain; }
+        .burger-btn { background: none; border: none; color: var(--accent); cursor: pointer; padding: 8px; }
+
+        #chatList { flex: 1; overflow-y: auto; padding: 10px; }
+        
+        .chat-item { 
+            padding: 12px; display: flex; align-items: center; gap: 14px; cursor: pointer; 
+            border-radius: 16px; transition: 0.2s; margin-bottom: 4px; position: relative;
+        }
+        .chat-item:hover { background: rgba(255,255,255,0.04); }
+        .chat-item.active { background: rgba(127, 73, 180, 0.12); }
+        .chat-item.pinned { border-left: 3px solid var(--accent); background: rgba(127, 73, 180, 0.03); }
+
+        .p-avatar { width: 48px; height: 48px; background: var(--accent); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-weight: 700; overflow: hidden; }
+        .p-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+        .chat-info { flex: 1; overflow: hidden; }
+        .chat-top { display: flex; justify-content: space-between; align-items: center; }
+        .chat-name { font-weight: 700; font-size: 15px; color: var(--white); }
+        .msg-date { font-size: 10px; color: var(--accent); font-weight: 800; }
+        .last-msg { font-size: 13px; color: var(--text-gray); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+
+        .main-panel { flex: 1; display: flex; flex-direction: column; position: relative; background: var(--bg-deep); }
+        #empty-view { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; }
+        .welcome-logo { width: 120px; opacity: 0.2; margin-bottom: 20px; filter: grayscale(1); }
+        .welcome-title { font-size: 60px; font-weight: 900; color: var(--accent); opacity: 0.1; margin: 0; }
+        .clock { font-size: 18px; letter-spacing: 4px; opacity: 0.4; font-weight: 600; margin-top: 10px; }
+        
+        #chat-frame { width: 100%; height: 100%; border: none; display: none; }
+
+        .drawer { position: fixed; left: -310px; top: 0; width: 300px; height: 100%; background: #0c0c0c; z-index: 2000; transition: 0.3s; border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+        .drawer.open { transform: translateX(310px); box-shadow: 20px 0 50px rgba(0,0,0,0.8); }
+        .drawer-content { flex: 1; padding: 25px; }
+        .nav-link { width: 100%; background: none; border: none; color: var(--text-gray); padding: 14px; display: flex; align-items: center; gap: 14px; cursor: pointer; border-radius: 12px; transition: 0.2s; font-size: 15px; text-align: left; text-decoration: none; margin-bottom: 5px; }
+        .nav-link:hover { background: rgba(127, 73, 180, 0.1); color: white; }
+        .nav-link i { color: var(--accent); }
+        
+        .drawer-footer { background: #050505; border-top: 1px solid var(--border); padding: 15px; }
+
+        #context-menu { position: fixed; background: #1a1a1a; border: 1px solid var(--border); border-radius: 12px; width: 190px; display: none; z-index: 5000; padding: 5px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); }
+        .menu-item { padding: 10px; color: white; cursor: pointer; display: flex; align-items: center; gap: 10px; border-radius: 8px; font-size: 14px; }
+        .menu-item:hover { background: var(--accent); }
+
+        .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 1500; backdrop-filter: blur(4px); }
+        .overlay.active { display: block; }
+    </style>
+</head>
+<body>
+
+<div id="preloader">
+    <div class="loader-content">
+        <img src="../img/logo.png" class="loader-logo" alt="Mewnly">
+        <div class="loader-quote" id="loaderQuote"><< Подключаемся к нейросети... >></div>
+    </div>
+</div>
+
+<div id="context-menu">
+    <div class="menu-item" id="menu-pin"><i data-lucide="pin" size="16"></i> Закрепить</div>
+    <div class="menu-item" id="menu-delete" style="color:#ff5e5e;"><i data-lucide="trash-2" size="16"></i> Удалить чат</div>
+</div>
+
+<div class="overlay" id="overlay" onclick="toggleMenu()"></div>
+
+<nav class="drawer" id="drawer">
+    <div class="drawer-content">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 40px;">
+            <img src="../img/logo.png" class="logo-img" alt="Logo">
+            <span style="font-size: 22px; font-weight: 900; letter-spacing: -1px;">Mewnly</span>
+        </div>
+        
+        <a href="dash.html" class="nav-link"><i data-lucide="message-square"></i> Сообщения</a>
+        <a href="profile.html" class="nav-link"><i data-lucide="user"></i> Профиль</a>
+        <a href="friends.html" class="nav-link"><i data-lucide="users"></i> Друзья</a>
+        <a href="saved.html" class="nav-link"><i data-lucide="bookmark"></i> Сохраненное</a>
+        <a href="settings.html" class="nav-link"><i data-lucide="settings"></i> Настройки</a>
+        <a href="updates.html" class="nav-link"><i data-lucide="refresh-cw"></i> Что нового?</a>
+        
+        <button onclick="logout()" class="nav-link" style="color: #ff5e5e; margin-top: 20px;"><i data-lucide="log-out"></i> Выход</button>
+    </div>
+    
+    <div class="drawer-footer">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <div class="p-avatar" id="footer-avatar" style="width:40px; height:40px; border-radius:10px;">?</div>
+            <div style="overflow:hidden;">
+                <div id="footer-name" style="font-weight:700; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">...</div>
+                <div id="footer-nick" style="color:var(--accent); font-size:11px;">@user</div>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<div class="app-container">
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <button class="burger-btn" onclick="toggleMenu()"><i data-lucide="menu"></i></button>
+            <div style="flex: 1; display: flex; align-items: center; gap: 10px; background: #080808; padding: 8px 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); cursor: pointer;" onclick="location.href='search.html'">
+                <i data-lucide="search" size="16" style="opacity: 0.3;"></i>
+                <span style="font-size: 14px; opacity:0.4;">Поиск...</span>
+            </div>
+        </div>
+        <div id="chatList"></div>
+    </aside>
+
+    <main class="main-panel">
+        <div id="empty-view">
+            <img src="../img/logo.png" class="welcome-logo" alt="Logo">
+            <h1 class="welcome-title">Mewnly</h1>
+            <div class="clock" id="clock">00:00:00</div>
+        </div>
+        <iframe id="chat-frame"></iframe>
+    </main>
+</div>
+
+<script>
+    const myNick = localStorage.getItem('mewnly_user');
+    let pinnedChats = JSON.parse(localStorage.getItem('pinned_chats') || '[]');
+    let currentCtxUser = null;
+
+    const quotes = [
+        "<< Фембои уже в пути! >>",
+        "<< Мы вовсе не пользовались Gemini >>",
+        "<< Лого рисовала моя бедная девушка >>",
+        "<< Мы не знаем на каких соплях тут все работает >>",
+        "<< Рисуем круг фембойским членом >>",
+        "<< Собираем пакеты с котиками... >>",
+    ];
+
+    function toggleMenu() {
+        document.getElementById('drawer').classList.toggle('open');
+        document.getElementById('overlay').classList.toggle('active');
+    }
+
+    // Часы
+    setInterval(() => { 
+        const el = document.getElementById('clock');
+        if(el) el.innerText = new Date().toLocaleTimeString(); 
+    }, 1000);
+
+    async function renderChats() {
+        const list = document.getElementById('chatList');
+        list.innerHTML = '';
+        let recent = JSON.parse(localStorage.getItem('recent_chats') || '[]');
+        
+        recent.sort((a, b) => pinnedChats.includes(b) - pinnedChats.includes(a));
+
+        for (const nick of recent) {
+            const profile = await window.loadProfile(nick);
+            const isPinned = pinnedChats.includes(nick);
+            
+            const item = document.createElement('div');
+            item.className = `chat-item ${isPinned ? 'pinned' : ''}`;
+            item.innerHTML = `
+                <div class="p-avatar">${profile?.avatar ? `<img src="${profile.avatar}">` : nick[0].toUpperCase()}</div>
+                <div class="chat-info">
+                    <div class="chat-top">
+                        <span class="chat-name">${profile?.realName || nick}</span>
+                        <span class="msg-date" id="date-${nick}">--:--</span>
+                    </div>
+                    <div class="last-msg" id="last-${nick}">Загрузка...</div>
+                </div>
+            `;
+
+            item.onclick = () => {
+                document.querySelectorAll('.chat-item').forEach(i => i.classList.remove('active'));
+                item.classList.add('active');
+                document.getElementById('empty-view').style.display = 'none';
+                const frame = document.getElementById('chat-frame');
+                frame.style.display = 'block';
+                frame.src = `messenger.html?user=${nick}`;
+            };
+            
+            item.oncontextmenu = (e) => {
+                e.preventDefault();
+                currentCtxUser = nick;
+                const menu = document.getElementById('context-menu');
+                menu.style.display = 'block';
+                menu.style.left = e.pageX + 'px';
+                menu.style.top = e.pageY + 'px';
+                document.getElementById('menu-pin').innerHTML = `<i data-lucide="pin" size="16"></i> ${isPinned ? 'Открепить' : 'Закрепить'}`;
+                lucide.createIcons();
+            };
+
+            list.appendChild(item);
+
+            window.watchLastMsg(myNick, nick, (data) => {
+                const textEl = document.getElementById(`last-${nick}`);
+                const dateEl = document.getElementById(`date-${nick}`);
+                if (textEl) textEl.innerText = data.from === myNick ? `Вы: ${data.text}` : data.text;
+                if (dateEl && data.createdAt) {
+                    const d = data.createdAt.toDate();
+                    dateEl.innerText = d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                }
+            });
+        }
+        lucide.createIcons();
+    }
+
+    // ПКМ действия
+    document.getElementById('menu-pin').onclick = () => {
+        if (pinnedChats.includes(currentCtxUser)) pinnedChats = pinnedChats.filter(n => n !== currentCtxUser);
+        else pinnedChats.push(currentCtxUser);
+        localStorage.setItem('pinned_chats', JSON.stringify(pinnedChats));
+        renderChats();
+    };
+
+    document.getElementById('menu-delete').onclick = () => {
+        let recent = JSON.parse(localStorage.getItem('recent_chats') || '[]');
+        localStorage.setItem('recent_chats', JSON.stringify(recent.filter(n => n !== currentCtxUser)));
+        renderChats();
+    };
+
+    document.addEventListener('click', () => { document.getElementById('context-menu').style.display = 'none'; });
+
+    // ИНИЦИАЛИЗАЦИЯ
+    async function init() {
+        // Устанавливаем случайную цитату
+        document.getElementById('loaderQuote').innerText = quotes[Math.floor(Math.random() * quotes.length)];
+        
+        try {
+            const me = await window.loadProfile(myNick);
+            if (me) {
+                document.getElementById('footer-name').innerText = me.realName || myNick;
+                document.getElementById('footer-nick').innerText = "@" + me.username;
+                if (me.avatar) document.getElementById('footer-avatar').innerHTML = `<img src="${me.avatar}">`;
+            }
+            await renderChats();
+            
+            // Плавное скрытие лоадера
+            setTimeout(() => {
+                const loader = document.getElementById('preloader');
+                loader.classList.add('loader-hidden');
+            }, 1000); // Задержка 1 сек, чтобы цитату успели прочитать
+
+        } catch (e) {
+            console.error("Load failed", e);
+            document.getElementById('preloader').classList.add('loader-hidden');
+        }
+    }
+
+    function logout() { localStorage.clear(); location.href='../index.html'; }
+
+    window.onload = init;
+</script>
+</body>
+</html>
